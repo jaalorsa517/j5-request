@@ -18,7 +18,23 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
   },
+})
 
-  // You can expose other APTs you need here.
-  // ...
+// Custom File System API
+contextBridge.exposeInMainWorld('electron', {
+  fs: {
+    readDir: (path: string) => ipcRenderer.invoke('fs:read-dir', path),
+    readFile: (path: string) => ipcRenderer.invoke('fs:read-file', path),
+    writeFile: (path: string, content: any) => ipcRenderer.invoke('fs:write-file', path, content),
+    createDirectory: (path: string) => ipcRenderer.invoke('fs:create-dir', path),
+    rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
+    delete: (path: string) => ipcRenderer.invoke('fs:delete', path),
+    selectFolder: () => ipcRenderer.invoke('fs:select-folder'),
+    watch: (path: string) => ipcRenderer.send('fs:watch', path),
+    onChanged: (callback: (event: string, path: string) => void) => {
+      const listener = (_e: any, event: string, path: string) => callback(event, path);
+      ipcRenderer.on('fs:changed', listener);
+      return () => ipcRenderer.off('fs:changed', listener);
+    }
+  }
 })

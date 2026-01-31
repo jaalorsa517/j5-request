@@ -10,11 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "chokidar": "^5.0.0",
     "pinia": "^3.0.4",
     "sass": "^1.97.3",
     "vue": "^3.4.21"
   },
   "devDependencies": {
+    "@types/node": "^25.1.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",

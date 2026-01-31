@@ -1,4 +1,5 @@
 import { app, BrowserWindow, utilityProcess } from 'electron'
+import { setupIpc } from './ipc'
 
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -76,6 +77,8 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
+
+  setupIpc(win);
 }
 
 // Quit when all windows are closed, except on macOS. There, it's common
