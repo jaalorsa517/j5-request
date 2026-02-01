@@ -48,6 +48,11 @@ export const useFileSystemStore = defineStore('file-system', () => {
             const content = await window.electron.fs.readFile(path);
             selectedFile.value = content;
             selectedFilePath.value = path;
+
+            // Cargar en RequestStore
+            const { useRequestStore } = await import('./request');
+            const requestStore = useRequestStore();
+            requestStore.loadFromFile(content);
         } catch (e) {
             console.error('Failed to read file', e);
             selectedFile.value = null;
