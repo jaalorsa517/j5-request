@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { FileSystemService } from './services/FileSystemService';
+import { gitService } from './services/GitService';
 
 const fsService = new FileSystemService();
 
@@ -45,5 +46,49 @@ export function setupIpc(mainWindow: BrowserWindow) {
                 mainWindow.webContents.send('fs:changed', event, changedPath);
             }
         });
+    });
+
+    // Git Handlers
+
+    // Git Handlers
+
+    ipcMain.handle('git:status', async (_, repoPath: string) => {
+        return gitService.getStatus(repoPath);
+    });
+
+    ipcMain.handle('git:stage', async (_, repoPath: string, files: string[]) => {
+        return gitService.stage(repoPath, files);
+    });
+
+    ipcMain.handle('git:unstage', async (_, repoPath: string, files: string[]) => {
+        return gitService.unstage(repoPath, files);
+    });
+
+    ipcMain.handle('git:commit', async (_, repoPath: string, message: string) => {
+        return gitService.commit(repoPath, message);
+    });
+
+    ipcMain.handle('git:push', async (_, repoPath: string) => {
+        return gitService.push(repoPath);
+    });
+
+    ipcMain.handle('git:pull', async (_, repoPath: string) => {
+        return gitService.pull(repoPath);
+    });
+
+    ipcMain.handle('git:checkout', async (_, repoPath: string, branch: string) => {
+        return gitService.checkout(repoPath, branch);
+    });
+
+    ipcMain.handle('git:get-branches', async (_, repoPath: string) => {
+        return gitService.getBranches(repoPath);
+    });
+
+    ipcMain.handle('git:find-repos', async (_, workspacePath: string) => {
+        return gitService.findRepositories(workspacePath);
+    });
+
+    ipcMain.handle('git:get-file-content', async (_, repoPath: string, filePath: string, ref: string) => {
+        return gitService.getFileContent(repoPath, filePath, ref);
     });
 }

@@ -15,6 +15,7 @@
     "monaco-editor": "^0.55.1",
     "pinia": "^3.0.4",
     "sass": "^1.97.3",
+    "simple-git": "^3.30.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {

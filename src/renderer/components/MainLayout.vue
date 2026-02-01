@@ -2,6 +2,8 @@
 import FileTree from './FileTree.vue';
 import RequestPanel from './RequestPanel.vue';
 import ResponsePanel from './ResponsePanel.vue';
+import GitPanel from './git/GitPanel.vue';
+import DiffEditor from './git/DiffEditor.vue';
 import { useFileSystemStore } from '../stores/file-system';
 import { useRequestStore } from '../stores/request';
 import { ref } from 'vue';
@@ -10,6 +12,15 @@ const store = useFileSystemStore();
 const requestStore = useRequestStore();
 const showNewRequestModal = ref(false);
 const newRequestName = ref('');
+
+// Navigation state
+const activeActivity = ref<'explorer' | 'git'>('explorer');
+
+// Diff state
+const showDiff = ref(false);
+const diffOriginal = ref('');
+const diffModified = ref('');
+const diffLanguage = ref('json');
 
 async function openFolder() {
     const path = await window.electron.fs.selectFolder();
@@ -33,13 +44,76 @@ async function confirmCreateRequest() {
 async function saveRequest() {
     await requestStore.saveToFile();
 }
+
+async function handleOpenDiff(file: string, repoPath: string) {
+    try {
+        // Assume file path is relative to repoPath or absolute? 
+        // GitService expects relative for getFileContent, but getStatus returns paths relative to repo root (usually).
+        // Let's assume file is relative to repoPath.
+        
+        // 1. Get original content
+        diffOriginal.value = await window.electron.git.getFileContent(repoPath, file, 'HEAD');
+        
+        // 2. Get modified content (from disk)
+        // We need absolute path for fs.readFile.
+        // If file is relative, we join with repoPath.
+        const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
+        const absolutePath = `${repoPath}${separator}${file}`;
+        
+        // Use fs.readFile which returns parsed JSON (J5Request) if json, or we might need raw text?
+        // Wait, fs.readFile in previous code returns `J5Request`. 
+        // But for diffing any file, we might want raw string.
+        // The current fs.readFile implementation parses JSON. 
+        // We might need a raw read. But for now let's use what we have and stringify if it's an object.
+        const content = await window.electron.fs.readFile(absolutePath);
+        
+        if (typeof content === 'string') {
+            diffModified.value = content;
+        } else {
+            diffModified.value = JSON.stringify(content, null, 2);
+        }
+        
+        showDiff.value = true;
+        // Language detection based on extension
+        if (file.endsWith('.json')) diffLanguage.value = 'json';
+        else if (file.endsWith('.js') || file.endsWith('.ts')) diffLanguage.value = 'typescript';
+        else diffLanguage.value = 'plaintext';
+        
+    } catch (e) {
+        console.error("Failed to open diff", e);
+    }
+}
+
+function closeDiff() {
+    showDiff.value = false;
+}
 </script>
 
 <template>
     <div class="mainLayout">
+        <!-- Activity Bar -->
+        <div class="activityBar">
+            <button 
+                class="activityBar__item" 
+                :class="{ active: activeActivity === 'explorer' }"
+                @click="activeActivity = 'explorer'; closeDiff()"
+                title="Explorer"
+            >
+                📁
+            </button>
+             <button 
+                class="activityBar__item" 
+                :class="{ active: activeActivity === 'git' }"
+                @click="activeActivity = 'git'"
+                title="Source Control"
+            >
+                🌲
+            </button>
+        </div>
+
         <!-- Sidebar -->
         <aside class="mainLayout__sidebar">
-            <div class="mainLayout__sidebarHeader">
+            <div class="mainLayout__sidebarHeader" v-if="activeActivity === 'explorer'">
                 <button class="mainLayout__actionButton" @click="openFolder">
                     📂 Open
                 </button>
@@ -59,20 +133,35 @@ async function saveRequest() {
                     {{ requestStore.isDirty ? '● ' : '' }}💾 Save
                 </button>
             </div>
+            
             <div class="mainLayout__sidebarContent">
-                <FileTree :entries="store.rootEntry" />
+                <FileTree v-if="activeActivity === 'explorer'" :entries="store.rootEntry" />
+                <GitPanel v-else-if="activeActivity === 'git'" @openDiff="handleOpenDiff" />
             </div>
         </aside>
 
         <!-- Workspace -->
         <div class="mainLayout__workspace">
-            <div class="mainLayout__panel mainLayout__panel--request">
-                <RequestPanel />
-            </div>
-            <div class="mainLayout__panel mainLayout__panel--response">
-                <ResponsePanel />
-            </div>
+            <template v-if="showDiff">
+                 <div class="diff-header">
+                     <button @click="closeDiff" class="close-diff-btn">❌ Close Diff</button>
+                 </div>
+                 <DiffEditor 
+                    :original="diffOriginal" 
+                    :modified="diffModified" 
+                    :language="diffLanguage" 
+                 />
+            </template>
+            <template v-else>
+                <div class="mainLayout__panel mainLayout__panel--request">
+                    <RequestPanel />
+                </div>
+                <div class="mainLayout__panel mainLayout__panel--response">
+                    <ResponsePanel />
+                </div>
+            </template>
         </div>
+
 
         <!-- Modal -->
         <div v-if="showNewRequestModal" class="mainLayout__modalOverlay">
@@ -101,6 +190,44 @@ async function saveRequest() {
     width: 100vw;
     background-color: #1e1e1e;
     color: #e0e0e0;
+}
+
+
+
+/* Activity Bar */
+.activityBar {
+    width: 48px;
+    background-color: #333333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+    border-right: 1px solid #252526;
+}
+
+.activityBar__item {
+    background: none;
+    border: none;
+    font-size: 1.5em; /* Emoji size */
+    padding: 10px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.activityBar__item:hover {
+    opacity: 0.8;
+}
+
+.activityBar__item.active {
+    opacity: 1;
+    border-left: 2px solid #0e639c; /* Active indicator */
+    background-color: #252526;
 }
 
 /* Sidebar */
@@ -251,5 +378,28 @@ async function saveRequest() {
 
 .mainLayout__modalActions button:last-child:hover {
     background: #1177bb;
+}
+
+/* Diff View */
+.diff-header {
+    height: 35px;
+    background-color: #1e1e1e;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+}
+
+.close-diff-btn {
+    background: none;
+    border: 1px solid #444;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.9em;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+.close-diff-btn:hover {
+    background: #333;
 }
 </style>

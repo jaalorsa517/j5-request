@@ -36,5 +36,17 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.on('fs:changed', listener);
       return () => ipcRenderer.off('fs:changed', listener);
     }
+  },
+  git: {
+    getStatus: (path: string) => ipcRenderer.invoke('git:status', path),
+    stage: (path: string, files: string[]) => ipcRenderer.invoke('git:stage', path, files),
+    unstage: (path: string, files: string[]) => ipcRenderer.invoke('git:unstage', path, files),
+    commit: (path: string, message: string) => ipcRenderer.invoke('git:commit', path, message),
+    push: (path: string) => ipcRenderer.invoke('git:push', path),
+    pull: (path: string) => ipcRenderer.invoke('git:pull', path),
+    checkout: (path: string, branch: string) => ipcRenderer.invoke('git:checkout', path, branch),
+    getBranches: (path: string) => ipcRenderer.invoke('git:get-branches', path),
+    findRepos: (path: string) => ipcRenderer.invoke('git:find-repos', path),
+    getFileContent: (path: string, filePath: string, ref: string) => ipcRenderer.invoke('git:get-file-content', path, filePath, ref),
   }
 })

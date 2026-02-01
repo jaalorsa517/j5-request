@@ -29,3 +29,15 @@ export interface J5Collection {
     path: string;
     // Metadata for collection could go here in the future
 }
+
+export interface GitStatus {
+    changed: string[];
+    staged: string[];
+    untracked: string[];
+    current: string;
+}
+
+export interface GitRepo {
+    path: string;
+    branch: string;
+}
