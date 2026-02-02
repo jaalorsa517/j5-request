@@ -1,5 +1,5 @@
 {
-  "name": "j5-request",
+  "name": "@jaalorsa/j5-request",
   "private": false,
   "version": "0.0.0",
   "type": "module",
