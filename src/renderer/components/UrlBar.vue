@@ -7,32 +7,7 @@ const requestStore = useRequestStore();
 const methods: RequestMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
 
 async function sendRequest() {
-    // Mock de respuesta HTTP
-    const startTime = Date.now();
-    
-    // Simular delay de red
-    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 700));
-    
-    const endTime = Date.now();
-    
-    // Generar respuesta mock
-    const mockResponse = {
-        userId: 1,
-        id: Math.floor(Math.random() * 100),
-        title: 'Mock Response',
-        body: 'Esta es una respuesta simulada para probar la UI. En la Fase 4 se implementará el ejecutor real.',
-        timestamp: new Date().toISOString(),
-        requestedUrl: requestStore.url,
-        method: requestStore.method,
-    };
-    
-    requestStore.response = {
-        status: 200,
-        statusText: 'OK',
-        time: endTime - startTime,
-        size: JSON.stringify(mockResponse).length,
-        body: JSON.stringify(mockResponse, null, 2),
-    };
+    await requestStore.execute();
 }
 </script>
 
@@ -49,8 +24,12 @@ async function sendRequest() {
             class="urlBar__input"
             placeholder="https://api.example.com/endpoint"
         />
-        <button class="urlBar__sendButton" @click="sendRequest">
-            Enviar
+        <button 
+            class="urlBar__sendButton" 
+            @click="sendRequest"
+            :disabled="!requestStore.url || requestStore.isLoading"
+        >
+            {{ requestStore.isLoading ? 'Enviando...' : 'Enviar' }}
         </button>
     </div>
 </template>

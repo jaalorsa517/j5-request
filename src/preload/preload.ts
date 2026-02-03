@@ -30,12 +30,16 @@ contextBridge.exposeInMainWorld('electron', {
     rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
     delete: (path: string) => ipcRenderer.invoke('fs:delete', path),
     selectFolder: () => ipcRenderer.invoke('fs:select-folder'),
+    selectFile: () => ipcRenderer.invoke('fs:select-file'),
+    saveFileDialog: (defaultName?: string) => ipcRenderer.invoke('fs:save-file-dialog', defaultName),
     watch: (path: string) => ipcRenderer.send('fs:watch', path),
     onChanged: (callback: (event: string, path: string) => void) => {
       const listener = (_e: any, event: string, path: string) => callback(event, path);
       ipcRenderer.on('fs:changed', listener);
-      return () => ipcRenderer.off('fs:changed', listener);
-    }
+      return () => ipcRenderer.removeListener('fs:changed', listener);
+    },
+    getUserDataPath: () => ipcRenderer.invoke('app:get-user-data-path'),
+    getGlobalsPath: () => ipcRenderer.invoke('app:get-globals-path'),
   },
   git: {
     getStatus: (path: string) => ipcRenderer.invoke('git:status', path),
@@ -48,5 +52,8 @@ contextBridge.exposeInMainWorld('electron', {
     getBranches: (path: string) => ipcRenderer.invoke('git:get-branches', path),
     findRepos: (path: string) => ipcRenderer.invoke('git:find-repos', path),
     getFileContent: (path: string, filePath: string, ref: string) => ipcRenderer.invoke('git:get-file-content', path, filePath, ref),
+  },
+  request: {
+    execute: (request: any, environment: any) => ipcRenderer.invoke('request:execute', request, environment)
   }
 })

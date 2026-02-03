@@ -14,13 +14,17 @@ declare global {
             fs: {
                 readDir: (path: string) => Promise<J5FileEntry[]>;
                 readFile: (path: string) => Promise<J5Request>;
-                writeFile: (path: string, content: J5Request) => Promise<void>;
+                writeFile: (path: string, content: any) => Promise<void>;
                 createDirectory: (path: string) => Promise<void>;
                 rename: (oldPath: string, newPath: string) => Promise<void>;
                 delete: (path: string) => Promise<void>;
                 selectFolder: () => Promise<string | null>;
+                selectFile: () => Promise<string | null>;
+                saveFileDialog: (defaultName?: string) => Promise<string | null>;
                 watch: (path: string) => void;
                 onChanged: (callback: (event: string, path: string) => void) => () => void;
+                getUserDataPath: () => Promise<string>;
+                getGlobalsPath: () => Promise<string>;
             };
             git: {
                 getStatus: (path: string) => Promise<import('../shared/types').GitStatus>;
@@ -33,6 +37,9 @@ declare global {
                 getBranches: (path: string) => Promise<string[]>;
                 findRepos: (workspacePath: string) => Promise<string[]>;
                 getFileContent: (repoPath: string, filePath: string, ref: string) => Promise<string>;
+            };
+            request: {
+                execute: (request: Partial<J5Request>, environment: Record<string, string>) => Promise<any>;
             }
         }
     }

@@ -15,6 +15,8 @@ export interface J5Request {
     headers: Record<string, string>;
     params: Record<string, string>;
     body?: J5RequestBody;
+    preRequestScript?: string;
+    postResponseScript?: string;
 }
 
 export interface J5FileEntry {
@@ -40,4 +42,17 @@ export interface GitStatus {
 export interface GitRepo {
     path: string;
     branch: string;
+}
+
+export interface J5EnvironmentVariable {
+    key: string;
+    value: string;
+    type: 'default' | 'secret';
+    enabled: boolean;
+}
+
+export interface J5Environment {
+    id: string;
+    name: string;
+    variables: J5EnvironmentVariable[];
 }

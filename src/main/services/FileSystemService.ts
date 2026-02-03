@@ -48,17 +48,19 @@ export class FileSystemService {
         }
     }
 
-    async readFile(filePath: string): Promise<J5Request> {
+    async readFile(filePath: string): Promise<any> {
         const content = await fs.readFile(filePath, 'utf-8');
-        return parseJson<J5Request>(content);
+        return parseJson<any>(content);
     }
 
     /**
      * Writes a request to disk.
      * RNF-01: Uses serializeJson for deterministic sorting.
      */
-    async writeFile(filePath: string, content: J5Request): Promise<void> {
+    async writeFile(filePath: string, content: any): Promise<void> {
         const stringContent = serializeJson(content);
+        const dir = path.dirname(filePath);
+        await fs.mkdir(dir, { recursive: true });
         await fs.writeFile(filePath, stringContent, 'utf-8');
     }
 

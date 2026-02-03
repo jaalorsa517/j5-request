@@ -4,12 +4,16 @@ import RequestPanel from './RequestPanel.vue';
 import ResponsePanel from './ResponsePanel.vue';
 import GitPanel from './git/GitPanel.vue';
 import DiffEditor from './git/DiffEditor.vue';
+import EnvironmentSelector from './EnvironmentSelector.vue';
+import EnvironmentManagerModal from './EnvironmentManagerModal.vue';
 import { useFileSystemStore } from '../stores/file-system';
 import { useRequestStore } from '../stores/request';
+import { useEnvironmentStore } from '../stores/environment';
 import { ref } from 'vue';
 
 const store = useFileSystemStore();
 const requestStore = useRequestStore();
+const envStore = useEnvironmentStore();
 const showNewRequestModal = ref(false);
 const newRequestName = ref('');
 
@@ -114,6 +118,9 @@ function closeDiff() {
         <!-- Sidebar -->
         <aside class="mainLayout__sidebar">
             <div class="mainLayout__sidebarHeader" v-if="activeActivity === 'explorer'">
+                <div style="margin-bottom: 8px;">
+                     <EnvironmentSelector />
+                </div>
                 <button class="mainLayout__actionButton" @click="openFolder">
                     📂 Open
                 </button>
@@ -180,6 +187,8 @@ function closeDiff() {
                 </div>
             </div>
         </div>
+        
+        <EnvironmentManagerModal v-if="envStore.showManager" />
     </div>
 </template>
 

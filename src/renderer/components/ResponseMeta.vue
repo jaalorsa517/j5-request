@@ -42,6 +42,9 @@ const formattedSize = computed(() => {
                 <span class="responseMeta__value">{{ formattedSize }}</span>
             </div>
         </div>
+        <div v-else-if="requestStore.error" class="responseMeta__error">
+            Error: {{ requestStore.error }}
+        </div>
         <div v-else class="responseMeta__empty">
             No response yet
         </div>
@@ -86,5 +89,10 @@ const formattedSize = computed(() => {
 .responseMeta__empty {
     color: #888;
     font-style: italic;
+}
+
+.responseMeta__error {
+    color: #f44336;
+    font-weight: bold;
 }
 </style>

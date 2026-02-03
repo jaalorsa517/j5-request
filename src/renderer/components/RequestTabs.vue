@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-type Tab = 'headers' | 'params' | 'body';
+type Tab = 'headers' | 'params' | 'body' | 'pre-request' | 'tests';
 
 const activeTab = ref<Tab>('body');
 </script>
@@ -29,6 +29,20 @@ const activeTab = ref<Tab>('body');
                 @click="activeTab = 'body'"
             >
                 Body
+            </button>
+            <button
+                class="requestTabs__tab"
+                :class="{ 'requestTabs__tab--active': activeTab === 'pre-request' }"
+                @click="activeTab = 'pre-request'"
+            >
+                Pre-req
+            </button>
+            <button
+                class="requestTabs__tab"
+                :class="{ 'requestTabs__tab--active': activeTab === 'tests' }"
+                @click="activeTab = 'tests'"
+            >
+                Tests
             </button>
         </div>
         <div class="requestTabs__content">
