@@ -70,8 +70,8 @@ export const useFileSystemStore = defineStore('file-system', () => {
     async function createRequest(filename: string) {
         if (!currentPath.value) return;
 
-        // Ensure .json extension
-        const finalName = filename.endsWith('.json') ? filename : `${filename}.json`;
+        // Ensure .j5request extension
+        const finalName = filename.endsWith('.j5request') ? filename : `${filename}.j5request`;
         // Basic path join (assuming unix-style for now, but electron handles absolute paths)
         // Ideally we should use path.join in main process, but string concat works if currentPath has separation
         // Let's assume currentPath is absolute.
@@ -83,7 +83,7 @@ export const useFileSystemStore = defineStore('file-system', () => {
 
         const newRequest: J5Request = {
             id: crypto.randomUUID(),
-            name: finalName.replace('.json', ''),
+            name: finalName.replace('.j5request', ''),
             method: 'GET',
             url: '',
             headers: {},

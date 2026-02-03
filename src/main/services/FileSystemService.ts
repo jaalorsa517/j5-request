@@ -28,7 +28,7 @@ export class FileSystemService {
                         type: 'directory',
                         children
                     });
-                } else if (entry.name.endsWith('.json')) {
+                } else if (entry.name.endsWith('.j5request')) {
                     results.push({
                         name: entry.name,
                         path: fullPath,
