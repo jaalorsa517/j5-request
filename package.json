@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && electron-builder",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@guolao/vue-monaco-editor": "^1.6.0",
@@ -24,12 +26,14 @@
     "@types/form-data": "^2.5.2",
     "@types/node": "^25.1.0",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
     "typescript": "^5.2.2",
     "vite": "^5.1.6",
     "vite-plugin-electron": "^0.28.6",
     "vite-plugin-electron-renderer": "^0.14.5",
+    "vitest": "^4.0.18",
     "vue-tsc": "^2.0.26"
   },
   "main": "dist-electron/main.js",

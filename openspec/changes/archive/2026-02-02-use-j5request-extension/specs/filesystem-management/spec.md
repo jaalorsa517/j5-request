@@ -1,6 +1,4 @@
-# Spec: Filesystem UI Integration
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Open File in UI
 La interacción con el sistema de archivos debe reflejarse en el editor.
@@ -10,6 +8,8 @@ La interacción con el sistema de archivos debe reflejarse en el editor.
 - **THEN** El contenido del archivo debe cargarse en el Store de la Petición.
 - **THEN** El Editor Monaco debe mostrar el contenido cargado.
 - **THEN** El panel de configuración (URL, Method, Headers) debe actualizarse con los datos del archivo.
+
+## ADDED Requirements
 
 ### Requirement: Filtrado de Archivos
 El sistema solo debe mostrar y operar con archivos compatibles.
