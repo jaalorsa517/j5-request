@@ -29,13 +29,9 @@ export const useRequestStore = defineStore('request', () => {
         body: string;
     } | null>(null);
 
-    // Estado original (para detectar cambios)
-    const originalState = ref<string>('');
-
-    // Computed: Detectar cambios sin guardar
-    const isDirty = computed(() => {
-        // Check changes including bodyType
-        const currentState = JSON.stringify({
+    // Helper: Snapshot current state
+    function snapshotState() {
+        return JSON.stringify({
             id: id.value,
             name: name.value,
             method: method.value,
@@ -48,11 +44,33 @@ export const useRequestStore = defineStore('request', () => {
             preRequestScript: preRequestScript.value,
             postResponseScript: postResponseScript.value,
         });
-        return currentState !== originalState.value;
+    }
+
+    // Estado original (para detectar cambios)
+    const originalState = ref<string>('');
+
+    // Computed: Detectar cambios sin guardar
+    const isDirty = computed(() => {
+        // If original state is empty (new request), technically everything is change,
+        // but if we want 'clean' initially, we should set originalState.
+        // However, if we follow 'isDirty' = 'has changed since last load/save',
+        // then for a new request, maybe we treat it as dirty if content exists? 
+        // Or we initialize originalState to default.
+        return snapshotState() !== originalState.value;
     });
+
+    // Initialize snapshot
+    // But we need to define variables first. They are defined above.
+    // Call snapshot after definition.
+    // We defer this call until after all refs are defined.
+    // Use immediate watcher or just call it?
+    // originalState.value = snapshotState(); // can't call before function def
+    // We will update internal logic to use this function.
 
     // Acción: Cargar desde archivo
     function loadFromFile(request: J5Request) {
+        reset(); // Ensure clean state before loading
+
         id.value = request.id;
         name.value = request.name;
         method.value = request.method;
@@ -84,18 +102,7 @@ export const useRequestStore = defineStore('request', () => {
         }
 
         // Guardar estado original
-        originalState.value = JSON.stringify({
-            id: id.value,
-            name: name.value,
-            method: method.value,
-            url: url.value,
-            headers: headers.value,
-            params: params.value,
-            body: body.value,
-            bodyType: bodyType.value,
-            preRequestScript: preRequestScript.value,
-            postResponseScript: postResponseScript.value,
-        });
+        originalState.value = snapshotState();
 
         // Limpiar respuesta anterior
         response.value = null;
@@ -158,18 +165,7 @@ export const useRequestStore = defineStore('request', () => {
         await fsStore.saveRequest();
 
         // Actualizar estado original después de guardar
-        originalState.value = JSON.stringify({
-            id: id.value,
-            name: name.value,
-            method: method.value,
-            url: url.value,
-            headers: headers.value,
-            params: params.value,
-            body: body.value,
-            bodyType: bodyType.value,
-            preRequestScript: preRequestScript.value,
-            postResponseScript: postResponseScript.value,
-        });
+        originalState.value = snapshotState();
     }
 
     // Acción: Limpiar estado
@@ -185,8 +181,11 @@ export const useRequestStore = defineStore('request', () => {
         bodyType.value = 'json';
         preRequestScript.value = '';
         postResponseScript.value = '';
-        originalState.value = '';
+        originalState.value = snapshotState();
     }
+
+    // Initialize original state on store definition
+    originalState.value = snapshotState();
 
     // Acción: Ejecutar petición
     async function execute() {
