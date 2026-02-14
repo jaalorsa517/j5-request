@@ -5,19 +5,19 @@ context: |
   TODOS los artefactos deben escribirse en español.
   Este proyecto es una aplicación de escritorio desarrollada con Electron y Vue 3.
   El proyecto utiliza TypeScript para el tipado. No usar `interface` para definir tipos, usar `type` en su lugar.
-
+  
 
 rules:
   proposal:
     - Idioma: Español
-
+    
   design:
     - Idioma: Español
     - Priorizar implementación haciendo uso de Test Driven Development (TDD).
     - Lenguaje Typescript.
     - No usar `interface` para definir tipos, usar `type` en su lugar.
     - Seguir principios SOLID y clean code. NO llenar de comentarios sino que los nombres de las funciones, clases, métodos, etc. deben ser descriptivos.
-    - Usar TDD para el desarrollo de la aplicación.
+    - Usar TDD para el desarrollo de la aplicación. 
 
   tasks:
     - Idioma: Español

@@ -200,7 +200,7 @@ export const useRequestStore = defineStore('request', () => {
                     params: reqState.params,
                     preRequestScript: reqState.preRequestScript,
                     postResponseScript: reqState.postResponseScript,
-                    // Body population omitted for brevity as it's computed logic,
+                    // Body population omitted for brevity as it's computed logic, 
                     // and 'selectedFile' is mostly used for "is selected" check in MainLayout.
                     // IMPORTANT: If MainLayout uses selectedFile properties for display, this might be incomplete.
                     // RequestEditor used selectedFile, but we moved to RequestPanel using RequestStore.

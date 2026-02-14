@@ -19,8 +19,8 @@ function handleNewTab() {
 
 <template>
     <div class="requestTabBar">
-        <div
-            v-for="tab in store.tabs"
+        <div 
+            v-for="tab in store.tabs" 
             :key="tab.id"
             class="requestTabBar__tab"
             :class="{ 'requestTabBar__tab--active': tab.id === store.activeTabId }"

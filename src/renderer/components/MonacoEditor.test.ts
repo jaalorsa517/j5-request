@@ -38,7 +38,7 @@ describe('MonacoEditor.vue', () => {
         });
 
         await wrapper.setProps({ modelValue: 'new' });
-        // Can't easily check internal editorValue ref without exposing it,
+        // Can't easily check internal editorValue ref without exposing it, 
         // but can verify the prop passed to the mock if we stubbed it better.
         // Or check if the change handler works.
     });

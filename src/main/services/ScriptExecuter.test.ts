@@ -78,7 +78,7 @@ describe('ScriptExecuter', () => {
         const script = `
             const json = pm.response.json();
             pm.environment.set('jsonKey', json.key);
-
+            
             const text = pm.response.text();
              pm.environment.set('textLen', text.length.toString());
         `;

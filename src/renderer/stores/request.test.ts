@@ -271,7 +271,7 @@ describe('Request Store', () => {
         it('should load raw request (parsed as json if valid)', () => {
             const store = useRequestStore();
             // if raw but content is valid json object in J5Request (legacy?) or string
-            // Logic: if type is raw, sets bodyType to json (assuming legacy raw json?).
+            // Logic: if type is raw, sets bodyType to json (assuming legacy raw json?). 
             // "Default to json for raw for now, or check content"
             // Implementation: if (request.body?.type === 'json' || request.body?.type === 'raw') -> bodyType = 'json'
 
