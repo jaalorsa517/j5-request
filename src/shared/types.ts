@@ -56,3 +56,36 @@ export interface J5Environment {
     name: string;
     variables: J5EnvironmentVariable[];
 }
+
+export interface RequestState {
+    id: string;
+    name: string;
+    method: RequestMethod;
+    url: string;
+    headers: Record<string, string>;
+    params: Record<string, string>;
+    body: string;
+    bodyFormData: Record<string, string | { type: 'file', path: string }>;
+    bodyType: 'json' | 'text' | 'xml' | 'form-data' | 'none';
+    preRequestScript: string;
+    postResponseScript: string;
+}
+
+export interface ResponseState {
+    status: number;
+    statusText: string;
+    headers: Record<string, string | string[]>;
+    time: number;
+    size: number;
+    body: string;
+}
+
+export type RequestTab = {
+    id: string;
+    name: string; // e.g. "GET /users" or "Untitled"
+    filePath?: string; // Associated file path on disk
+    request: RequestState;
+    response: ResponseState | null;
+    isDirty: boolean;
+    originalState: string; // To track dirty state
+};
