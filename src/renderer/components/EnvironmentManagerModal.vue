@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { useEnvironmentStore } from '../stores/environment';
-import { J5EnvironmentVariable } from '../../shared/types';
+import { useEnvironmentStore } from '@/renderer/stores/environment';
+import { J5EnvironmentVariable } from '@/shared/types';
 
 const store = useEnvironmentStore();
 const componentKey = ref(0);

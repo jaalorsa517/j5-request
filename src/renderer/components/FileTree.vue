@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { J5FileEntry } from '../../shared/types';
-import { useFileSystemStore } from '../stores/file-system';
+import { J5FileEntry } from '@/shared/types';
+import { useFileSystemStore } from '@/renderer/stores/file-system';
 
 defineProps<{
   entries: J5FileEntry[];

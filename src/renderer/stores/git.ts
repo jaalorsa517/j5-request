@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { GitStatus } from '../../shared/types';
+import { GitStatus } from '@/shared/types';
 
 export const useGitStore = defineStore('git', () => {
     const repositories = ref<string[]>([]);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useEnvironmentStore } from '../stores/environment';
+import { useEnvironmentStore } from '@/renderer/stores/environment';
 
 const store = useEnvironmentStore();
 

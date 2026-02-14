@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useRequestStore } from '../stores/request';
-import { RequestMethod } from '../../shared/types';
+import { useRequestStore } from '@/renderer/stores/request';
+import { RequestMethod } from '@/shared/types';
 
 const requestStore = useRequestStore();
 

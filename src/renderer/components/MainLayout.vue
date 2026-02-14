@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import FileTree from './FileTree.vue';
-import RequestPanel from './RequestPanel.vue';
-import ResponsePanel from './ResponsePanel.vue';
-import GitPanel from './git/GitPanel.vue';
-import DiffEditor from './git/DiffEditor.vue';
-import EnvironmentSelector from './EnvironmentSelector.vue';
-import EnvironmentManagerModal from './EnvironmentManagerModal.vue';
-import RequestTabBar from './RequestTabBar.vue';
-import { useFileSystemStore } from '../stores/file-system';
-import { useRequestStore } from '../stores/request';
-import { useEnvironmentStore } from '../stores/environment';
-import { useThemeStore } from '../stores/theme';
+import FileTree from '@/renderer/components/FileTree.vue';
+import RequestPanel from '@/renderer/components/RequestPanel.vue';
+import ResponsePanel from '@/renderer/components/ResponsePanel.vue';
+import GitPanel from '@/renderer/components/git/GitPanel.vue';
+import DiffEditor from '@/renderer/components/git/DiffEditor.vue';
+import EnvironmentSelector from '@/renderer/components/EnvironmentSelector.vue';
+import EnvironmentManagerModal from '@/renderer/components/EnvironmentManagerModal.vue';
+import RequestTabBar from '@/renderer/components/RequestTabBar.vue';
+import { useFileSystemStore } from '@/renderer/stores/file-system';
+import { useRequestStore } from '@/renderer/stores/request';
+import { useEnvironmentStore } from '@/renderer/stores/environment';
+import { useThemeStore } from '@/renderer/stores/theme';
 import { ref } from 'vue';
 
 const store = useFileSystemStore();

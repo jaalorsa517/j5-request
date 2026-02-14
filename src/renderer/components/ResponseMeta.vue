@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRequestStore } from '../stores/request';
+import { useRequestStore } from '@/renderer/stores/request';
 
 const requestStore = useRequestStore();
 

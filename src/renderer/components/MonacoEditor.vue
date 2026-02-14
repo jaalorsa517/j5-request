@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor';
-import { useThemeStore } from '../stores/theme';
+import { useThemeStore } from '@/renderer/stores/theme';
 
 interface Props {
     modelValue: string;

@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import chokidar from 'chokidar';
-import { J5FileEntry, J5Request } from '../../shared/types';
-import { parseJson, serializeJson } from '../../shared/utils/json-helpers';
+import { J5FileEntry, J5Request } from '@/shared/types';
+import { parseJson, serializeJson } from '@/shared/utils/json-helpers';
 
 export class FileSystemService {
     private watcher: ReturnType<typeof chokidar.watch> | null = null;

@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { J5Request, RequestMethod, RequestTab, RequestState, ResponseState } from '../../shared/types';
-import { useFileSystemStore } from './file-system';
-import { useEnvironmentStore } from './environment';
-import { generateUUID } from '../../shared/utils/uuid';
+import { J5Request, RequestMethod, RequestTab, RequestState, ResponseState } from '@/shared/types';
+import { useFileSystemStore } from '@/renderer/stores/file-system';
+import { useEnvironmentStore } from '@/renderer/stores/environment';
+import { generateUUID } from '@/shared/utils/uuid';
 
 export const useRequestStore = defineStore('request', () => {
     // Estado de Pestañas

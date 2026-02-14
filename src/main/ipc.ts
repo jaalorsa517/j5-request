@@ -1,8 +1,8 @@
 import { ipcMain, BrowserWindow, app } from 'electron';
 import path from 'path';
-import { FileSystemService } from './services/FileSystemService';
-import { gitService } from './services/GitService';
-import { RequestExecutor } from './services/RequestExecutor';
+import { FileSystemService } from '@/main/services/FileSystemService';
+import { gitService } from '@/main/services/GitService';
+import { RequestExecutor } from '@/main/services/RequestExecutor';
 
 const fsService = new FileSystemService();
 const requestExecutor = new RequestExecutor();

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, utilityProcess } from 'electron'
-import { setupIpc } from './ipc'
+import { setupIpc } from '@/main/ipc'
 
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'

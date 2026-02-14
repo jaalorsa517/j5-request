@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import ResponseMeta from './ResponseMeta.vue';
-import ResponseBodyViewer from './ResponseBodyViewer.vue';
+import ResponseMeta from '@/renderer/components/ResponseMeta.vue';
+import ResponseBodyViewer from '@/renderer/components/ResponseBodyViewer.vue';
 </script>
 
 <template>
