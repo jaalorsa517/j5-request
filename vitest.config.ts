@@ -1,14 +1,20 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import path from 'node:path';
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/test/**/*.test.ts'],
     environment: 'node',
     setupFiles: ['./src/test/setupRenderer.ts'],
     environmentMatchGlobs: [
-      ['src/renderer/**/*.test.ts', 'jsdom']
+      ['src/test/renderer/**/*.test.ts', 'jsdom']
     ],
     coverage: {
       provider: 'v8',
