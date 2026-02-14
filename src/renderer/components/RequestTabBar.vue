@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRequestStore } from '../stores/request';
+import { useRequestStore } from '@/renderer/stores/request';
 
 const store = useRequestStore();
 

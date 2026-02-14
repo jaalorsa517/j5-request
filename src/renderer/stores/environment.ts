@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { J5Environment } from '../../shared/types';
+import { J5Environment } from '@/shared/types';
 
 export const useEnvironmentStore = defineStore('environment', () => {
 

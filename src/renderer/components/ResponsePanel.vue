@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import ResponseMeta from './ResponseMeta.vue';
-import ResponseBodyViewer from './ResponseBodyViewer.vue';
+import ResponseMeta from '@/renderer/components/ResponseMeta.vue';
+import ResponseBodyViewer from '@/renderer/components/ResponseBodyViewer.vue';
 </script>
 
 <template>
@@ -15,6 +15,6 @@ import ResponseBodyViewer from './ResponseBodyViewer.vue';
     display: flex;
     flex-direction: column;
     height: 100%;
-    background-color: #1e1e1e;
+    background-color: var(--bg-primary);
 }
 </style>

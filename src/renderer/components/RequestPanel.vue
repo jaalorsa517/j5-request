@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { useRequestStore } from '../stores/request';
-import UrlBar from './UrlBar.vue';
-import RequestTabs from './RequestTabs.vue';
-import KeyValueEditor from './KeyValueEditor.vue';
-import RequestBodyEditor from './RequestBodyEditor.vue';
-import MonacoEditor from './MonacoEditor.vue';
+import { useRequestStore } from '@/renderer/stores/request';
+import UrlBar from '@/renderer/components/UrlBar.vue';
+import RequestTabs from '@/renderer/components/RequestTabs.vue';
+import KeyValueEditor from '@/renderer/components/KeyValueEditor.vue';
+import RequestBodyEditor from '@/renderer/components/RequestBodyEditor.vue';
+import MonacoEditor from '@/renderer/components/MonacoEditor.vue';
 
 const requestStore = useRequestStore();
 </script>
@@ -44,7 +44,7 @@ const requestStore = useRequestStore();
     flex-direction: column;
     height: 100%;
     width: 100%;
-    background-color: #1e1e1e;
+    background-color: var(--bg-primary);
     overflow: hidden;
 }
 </style>

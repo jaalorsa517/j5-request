@@ -1,9 +1,9 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import FormData from 'form-data';
 import { createReadStream } from 'fs';
-import { J5Request } from '../../shared/types';
-import { ScriptExecuter, ExecutionContext } from './ScriptExecuter';
-import { EnvironmentManager } from './EnvironmentManager';
+import { J5Request } from '@/shared/types';
+import { ScriptExecuter, ExecutionContext } from '@/main/services/ScriptExecuter';
+import { EnvironmentManager } from '@/main/services/EnvironmentManager';
 
 export type ExecutionResult = {
     success: boolean;

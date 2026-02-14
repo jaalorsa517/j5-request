@@ -5,6 +5,11 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   plugins: [
     vue(),
     electron({
@@ -13,6 +18,13 @@ export default defineConfig({
         entry: {
           main: 'src/main/main.ts',
           worker: 'src/worker/worker.ts',
+        },
+        vite: {
+          resolve: {
+            alias: {
+              '@': path.resolve(__dirname, './src'),
+            },
+          },
         },
       },
       preload: {

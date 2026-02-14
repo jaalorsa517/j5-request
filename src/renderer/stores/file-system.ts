@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { J5FileEntry, J5Request } from '../../shared/types';
+import { J5FileEntry, J5Request } from '@/shared/types';
 
 export const useFileSystemStore = defineStore('file-system', () => {
     const rootEntry = ref<J5FileEntry[]>([]);
@@ -50,7 +50,7 @@ export const useFileSystemStore = defineStore('file-system', () => {
             selectedFilePath.value = path;
 
             // Cargar en RequestStore
-            const { useRequestStore } = await import('./request');
+            const { useRequestStore } = await import('@/renderer/stores/request');
             const requestStore = useRequestStore();
             requestStore.loadFromFile(content, path);
         } catch (e) {

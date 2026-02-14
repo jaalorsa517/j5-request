@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRequestStore } from '../stores/request';
-import MonacoEditor from './MonacoEditor.vue';
-import FormDataEditor from './FormDataEditor.vue';
+import { useRequestStore } from '@/renderer/stores/request';
+import MonacoEditor from '@/renderer/components/MonacoEditor.vue';
+import FormDataEditor from '@/renderer/components/FormDataEditor.vue';
 
 const requestStore = useRequestStore();
 

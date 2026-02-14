@@ -113,7 +113,7 @@ function removePair(index: number) {
 <style scoped>
 .keyValueEditor {
     padding: 12px;
-    background-color: #1e1e1e;
+    background-color: var(--bg-primary);
 }
 
 .keyValueEditor__header {
@@ -122,7 +122,7 @@ function removePair(index: number) {
     gap: 8px;
     padding: 8px;
     font-weight: 600;
-    color: #888;
+    color: var(--text-secondary);
     font-size: 12px;
     text-transform: uppercase;
 }
@@ -151,22 +151,22 @@ function removePair(index: number) {
 .keyValueEditor__input {
     width: 100%;
     padding: 6px 8px;
-    background-color: #2d2d2d;
-    color: #fff;
-    border: 1px solid #444;
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .keyValueEditor__input::placeholder {
-    color: #666;
+    color: var(--text-secondary);
 }
 
 .keyValueEditor__deleteButton {
     width: 24px;
     height: 24px;
     background-color: transparent;
-    color: #888;
+    color: var(--text-secondary);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -176,7 +176,7 @@ function removePair(index: number) {
 }
 
 .keyValueEditor__deleteButton:hover {
-    background-color: #d32f2f;
-    color: #fff;
+    background-color: var(--error-color);
+    color: var(--text-inverse);
 }
 </style>

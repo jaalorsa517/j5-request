@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { J5FileEntry, J5Request } from '../shared/types';
+import { J5FileEntry, J5Request } from '@/shared/types';
 
 declare module '*.vue' {
     import type { DefineComponent } from 'vue'

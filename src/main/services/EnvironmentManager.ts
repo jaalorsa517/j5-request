@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
-import { J5Environment, J5EnvironmentVariable } from '../../shared/types';
-import { parseJson, serializeJson } from '../../shared/utils/json-helpers';
+import { J5Environment } from '@/shared/types';
+import { parseJson, serializeJson } from '@/shared/utils/json-helpers';
 
 export class EnvironmentManager {
 

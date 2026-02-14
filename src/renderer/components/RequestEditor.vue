@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useFileSystemStore } from '../stores/file-system';
+import { useFileSystemStore } from '@/renderer/stores/file-system';
 import { storeToRefs } from 'pinia';
 
 const store = useFileSystemStore();

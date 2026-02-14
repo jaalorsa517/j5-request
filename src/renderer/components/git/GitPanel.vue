@@ -36,11 +36,11 @@
 <script setup lang="ts">
 import { onMounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useGitStore } from '../../stores/git';
-import { useFileSystemStore } from '../../stores/file-system';
-import GitRepositoryItem from './GitRepositoryItem.vue';
-import GitChangesList from './GitChangesList.vue';
-import GitCommitBox from './GitCommitBox.vue';
+import { useGitStore } from '@/renderer/stores/git';
+import { useFileSystemStore } from '@/renderer/stores/file-system';
+import GitRepositoryItem from '@/renderer/components/git/GitRepositoryItem.vue';
+import GitChangesList from '@/renderer/components/git/GitChangesList.vue';
+import GitCommitBox from '@/renderer/components/git/GitCommitBox.vue';
 
 const gitStore = useGitStore();
 const fsStore = useFileSystemStore();

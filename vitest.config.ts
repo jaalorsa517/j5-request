@@ -1,14 +1,20 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import path from 'node:path';
 
 export default defineConfig({
   plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/test/**/*.test.ts'],
     environment: 'node',
     setupFiles: ['./src/test/setupRenderer.ts'],
     environmentMatchGlobs: [
-      ['src/renderer/**/*.test.ts', 'jsdom']
+      ['src/test/renderer/**/*.test.ts', 'jsdom']
     ],
     coverage: {
       provider: 'v8',
@@ -25,6 +31,7 @@ export default defineConfig({
         'src/preload/**',
         'src/renderer/assets/**',
         'src/**/index.ts', // Index files explicitly if they are just exports
+        'src/shared/types.ts',
       ],
       thresholds: {
         lines: 90,
