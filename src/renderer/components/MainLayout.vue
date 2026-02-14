@@ -6,6 +6,7 @@ import GitPanel from './git/GitPanel.vue';
 import DiffEditor from './git/DiffEditor.vue';
 import EnvironmentSelector from './EnvironmentSelector.vue';
 import EnvironmentManagerModal from './EnvironmentManagerModal.vue';
+import RequestTabBar from './RequestTabBar.vue';
 import { useFileSystemStore } from '../stores/file-system';
 import { useRequestStore } from '../stores/request';
 import { useEnvironmentStore } from '../stores/environment';
@@ -149,6 +150,8 @@ function closeDiff() {
 
         <!-- Workspace -->
         <div class="mainLayout__workspace">
+            <RequestTabBar />
+
             <template v-if="showDiff">
                  <div class="diff-header">
                      <button @click="closeDiff" class="close-diff-btn">❌ Close Diff</button>

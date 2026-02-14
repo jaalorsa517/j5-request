@@ -52,7 +52,7 @@ export const useFileSystemStore = defineStore('file-system', () => {
             // Cargar en RequestStore
             const { useRequestStore } = await import('./request');
             const requestStore = useRequestStore();
-            requestStore.loadFromFile(content);
+            requestStore.loadFromFile(content, path);
         } catch (e) {
             console.error('Failed to read file', e);
             selectedFile.value = null;

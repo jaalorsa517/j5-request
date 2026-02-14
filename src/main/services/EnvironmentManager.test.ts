@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { EnvironmentManager } from './EnvironmentManager';
+import fs from 'fs/promises';
+
+vi.mock('fs/promises');
 
 describe('EnvironmentManager', () => {
     const envManager = new EnvironmentManager();
@@ -59,12 +62,13 @@ describe('EnvironmentManager', () => {
     describe('flattenEnvironment', () => {
         it('should return map of only enabled variables', () => {
             const env = {
+                id: '1',
                 name: 'Test',
                 variables: [
-                    { id: '1', key: 'url', value: 'http://test.com', enabled: true, secret: false },
-                    { id: '2', key: 'token', value: '123', enabled: false, secret: false },
-                    { id: '3', key: 'user', value: 'admin', enabled: true, secret: false }
-                ]
+                    { key: 'url', value: 'http://test.com', enabled: true, type: 'default' },
+                    { key: 'token', value: '123', enabled: false, type: 'secret' },
+                    { key: 'user', value: 'admin', enabled: true, type: 'default' }
+                ] as any[]
             };
             const flattened = envManager.flattenEnvironment(env);
             expect(flattened).toEqual({
@@ -72,6 +76,30 @@ describe('EnvironmentManager', () => {
                 user: 'admin'
             });
             expect(flattened).not.toHaveProperty('token');
+        });
+    });
+    describe('loadEnvironment', () => {
+        it('should read and parse environment file', async () => {
+            const mockContent = '{"name": "test", "variables": []}';
+            (fs.readFile as any).mockResolvedValue(mockContent);
+
+            const env = await envManager.loadEnvironment('/path/to/env.json');
+
+            expect(env).toEqual({ name: "test", variables: [] });
+            expect(fs.readFile).toHaveBeenCalledWith('/path/to/env.json', 'utf-8');
+        });
+    });
+
+    describe('saveEnvironment', () => {
+        it('should serialize and write environment file', async () => {
+            const env = { id: '1', name: 'test', variables: [] };
+            await envManager.saveEnvironment('/path/to/env.json', env);
+
+            expect(fs.writeFile).toHaveBeenCalledWith(
+                '/path/to/env.json',
+                expect.stringContaining('"name": "test"'),
+                'utf-8'
+            );
         });
     });
 });
