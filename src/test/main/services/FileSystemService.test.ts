@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FileSystemService } from '@/main/services/FileSystemService';
 import fs from 'fs/promises';
 import chokidar from 'chokidar';

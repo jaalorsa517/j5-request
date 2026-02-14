@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import chokidar from 'chokidar';
-import { J5FileEntry, J5Request } from '@/shared/types';
+import { J5FileEntry } from '@/shared/types';
 import { parseJson, serializeJson } from '@/shared/utils/json-helpers';
 
 export class FileSystemService {

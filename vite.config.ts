@@ -19,6 +19,13 @@ export default defineConfig({
           main: 'src/main/main.ts',
           worker: 'src/worker/worker.ts',
         },
+        vite: {
+          resolve: {
+            alias: {
+              '@': path.resolve(__dirname, './src'),
+            },
+          },
+        },
       },
       preload: {
         // Shortcut of `build.rollupOptions.input`.

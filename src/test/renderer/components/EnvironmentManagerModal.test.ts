@@ -149,7 +149,7 @@ describe('EnvironmentManagerModal.vue', () => {
         expect(store.activeEnvironment?.variables[0].enabled).toBe(false);
 
         // Change key
-        const keyInput = wrapper.findAll('.vars-row input').find(i => i.element.value === 'K');
+        const keyInput = wrapper.findAll('.vars-row input').find(i => (i.element as any).value === 'K');
         await keyInput?.setValue('K2');
         expect(store.activeEnvironment?.variables[0].key).toBe('K2');
 

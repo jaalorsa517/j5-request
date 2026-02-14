@@ -24,8 +24,8 @@ describe('FormDataEditor.vue', () => {
         expect(wrapper.findAll('.formDataEditor__row')).toHaveLength(2); // John + empty
         
         const inputs = wrapper.findAll('input.input');
-        expect(inputs[0].element.value).toBe('name');
-        expect(inputs[1].element.value).toBe('John');
+        expect((inputs[0].element as any).value).toBe('name');
+        expect((inputs[1].element as any).value).toBe('John');
 
         // Add row
         await inputs[2].setValue('age');

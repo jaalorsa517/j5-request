@@ -66,7 +66,7 @@ describe('ResponseMeta.vue', () => {
             const wrapper = mount(ResponseMeta, { global: { plugins: [createMockPinia({ status: c.status, statusText: 'ST' })] } });
             await wrapper.vm.$nextTick();
             const statusEl = wrapper.find('.responseMeta__value--status');
-            expect(statusEl.element.style.color).toBe(c.color);
+            expect((statusEl.element as any).style.color).toBe(c.color);
         }
     });
 

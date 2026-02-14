@@ -5,7 +5,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import RequestBodyEditor from '@/renderer/components/RequestBodyEditor.vue';
-import { useRequestStore } from '@/renderer/stores/request';
 
 vi.mock('@/renderer/components/MonacoEditor.vue', () => ({ 
     default: { 

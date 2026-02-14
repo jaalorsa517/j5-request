@@ -12,7 +12,8 @@ vi.mock('@guolao/vue-monaco-editor', () => ({
         template: '<div class="vue-monaco-editor-mock"></div>',
         emits: ['update:value', 'change'],
         props: ['value'],
-        setup(props, { emit }) {
+        setup(_props: any, { _emit }: any) {
+            void _emit;
             return {};
         }
     }

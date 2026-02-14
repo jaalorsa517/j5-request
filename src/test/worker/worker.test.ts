@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockParentPort = {
     on: vi.fn(),
     postMessage: vi.fn(),
-    _emit: (event: string, msg: any) => { }
+    _emit: (_event: string, _msg: any) => { }
 };
 
 vi.mock('node:worker_threads', () => {
@@ -19,8 +19,8 @@ describe('Worker', () => {
         vi.resetModules();
         // Setup _emit
         let listener: Function;
-        mockParentPort.on.mockImplementation((event, cb) => { listener = cb; });
-        mockParentPort._emit = (event, msg) => listener && listener(msg);
+        mockParentPort.on.mockImplementation((_event, cb) => { listener = cb; });
+        mockParentPort._emit = (_event, msg) => listener && listener(msg);
     });
 
     it('responds to ping with pong', async () => {

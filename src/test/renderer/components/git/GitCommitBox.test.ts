@@ -14,7 +14,7 @@ describe('GitCommitBox.vue', () => {
         await wrapper.find('.git-commit-box__btn--primary').trigger('click');
         expect(wrapper.emitted('commit')).toBeTruthy();
         expect(wrapper.emitted('commit')![0]).toEqual(['feat: test']);
-        expect(input.element.value).toBe(''); // cleared after commit
+        expect((input.element as any).value).toBe(''); // cleared after commit
     });
 
     it('emits sync event when button is clicked', async () => {

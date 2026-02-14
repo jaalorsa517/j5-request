@@ -16,8 +16,8 @@ describe('KeyValueEditor.vue', () => {
         expect(rows).toHaveLength(2); // 1 from props + 1 empty
         
         const inputs = rows[0].findAll('input[type="text"]');
-        expect(inputs[0].element.value).toBe('key1');
-        expect(inputs[1].element.value).toBe('val1');
+        expect((inputs[0].element as any).value).toBe('key1');
+        expect((inputs[1].element as any).value).toBe('val1');
     });
 
     it('adds a new row when the last one is edited', async () => {

@@ -32,7 +32,7 @@ describe('Environment Store', () => {
         mockFs.readFile.mockResolvedValue({
             id: 'globals',
             name: 'Globals',
-            variables: [{ key: 'g1', value: 'v1', enabled: true }]
+            variables: [{ key: 'g1', value: 'v1', enabled: true, type: 'default' }]
         });
 
         const store = useEnvironmentStore();
@@ -49,6 +49,7 @@ describe('Environment Store', () => {
     it('should handle missing variables in globals file', async () => {
         mockFs.readFile.mockResolvedValue({ id: 'globals', name: 'Globals' }); // missing variables array
         const store = useEnvironmentStore();
+        void store;
         await new Promise(resolve => setTimeout(resolve, 0));
         expect(store.globals.variables).toEqual([]);
     });
@@ -56,6 +57,7 @@ describe('Environment Store', () => {
     it('should handle error in loadGlobals gracefully', async () => {
         mockFs.getGlobalsPath.mockRejectedValue(new Error('Path error'));
         const store = useEnvironmentStore();
+        void store;
         await new Promise(resolve => setTimeout(resolve, 0));
         // should not throw
     });
@@ -147,8 +149,8 @@ describe('Environment Store', () => {
     });
 
     it('should save globals', async () => {
-        const store = useEnvironmentStore();
-        store.globals = { id: 'g', name: 'G', variables: [{ key: 'k', value: 'v', enabled: true }] };
+        const store: any = useEnvironmentStore();
+        store.globals = { id: 'g', name: 'G', variables: [{ key: 'k', value: 'v', enabled: true, type: 'default' }] };
 
         await store.saveGlobals();
 
@@ -196,48 +198,48 @@ describe('Environment Store', () => {
     });
 
     it('should update variables from execution', () => {
-        const store = useEnvironmentStore();
+        const store: any = useEnvironmentStore();
         store.globals = {
             id: 'g',
             name: 'G',
-            variables: [{ key: 'g1', value: 'old', enabled: true }]
+            variables: [{ key: 'g1', value: 'old', enabled: true, type: 'default' }]
         };
         store.activeEnvironment = {
             id: 'a',
             name: 'A',
-            variables: [{ key: 'a1', value: 'old', enabled: true }]
+            variables: [{ key: 'a1', value: 'old', enabled: true, type: 'default' }]
         };
 
         // Update existing in active
         store.updateVariablesFromExecution({ a1: 'new' });
-        expect(store.activeEnvironment.variables.find(v => v.key === 'a1')?.value).toBe('new');
+        expect(store.activeEnvironment.variables.find((v: any) => v.key === 'a1')?.value).toBe('new');
 
         // Update with same value (branch coverage)
         store.updateVariablesFromExecution({ a1: 'new' });
-        expect(store.activeEnvironment.variables.find(v => v.key === 'a1')?.value).toBe('new');
+        expect(store.activeEnvironment.variables.find((v: any) => v.key === 'a1')?.value).toBe('new');
 
         // Update existing in global (fallback)
         store.updateVariablesFromExecution({ g1: 'new' });
-        expect(store.globals.variables.find(v => v.key === 'g1')?.value).toBe('new');
+        expect(store.globals.variables.find((v: any) => v.key === 'g1')?.value).toBe('new');
 
         // Update with same value in globals (branch coverage)
         store.updateVariablesFromExecution({ g1: 'new' });
-        expect(store.globals.variables.find(v => v.key === 'g1')?.value).toBe('new');
+        expect(store.globals.variables.find((v: any) => v.key === 'g1')?.value).toBe('new');
 
         // Case where key not in active but in globals
         store.activeEnvironment = { id: 'a', name: 'A', variables: [] };
-        store.globals = { id: 'g', name: 'G', variables: [{ key: 'G_KEY', value: 'old', enabled: true }] };
+        store.globals = { id: 'g', name: 'G', variables: [{ key: 'G_KEY', value: 'old', enabled: true, type: 'default' }] };
         store.updateVariablesFromExecution({ G_KEY: 'new' });
-        expect(store.globals.variables.find(v => v.key === 'G_KEY')?.value).toBe('new');
+        expect(store.globals.variables.find((v: any) => v.key === 'G_KEY')?.value).toBe('new');
 
         // Add new
         store.updateVariablesFromExecution({ newKey: 'newValue' });
-        expect(store.activeEnvironment.variables.find(v => v.key === 'newKey')?.value).toBe('newValue');
+        expect(store.activeEnvironment.variables.find((v: any) => v.key === 'newKey')?.value).toBe('newValue');
 
         // Case with no active environment (should add to globals if not found)
         store.activeEnvironment = null;
         store.updateVariablesFromExecution({ NEW_G: 'val' });
-        expect(store.globals.variables.find(v => v.key === 'NEW_G')).toBeTruthy();
+        expect(store.globals.variables.find((v: any) => v.key === 'NEW_G')).toBeTruthy();
     });
 
     it('handles corrupted environment files', async () => {

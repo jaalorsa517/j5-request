@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { J5Request, RequestMethod, RequestTab, RequestState, ResponseState } from '@/shared/types';
+import { J5Request, RequestTab, RequestState } from '@/shared/types';
 import { useFileSystemStore } from '@/renderer/stores/file-system';
 import { useEnvironmentStore } from '@/renderer/stores/environment';
 import { generateUUID } from '@/shared/utils/uuid';
@@ -151,7 +151,7 @@ export const useRequestStore = defineStore('request', () => {
             // Intentar ir a la anterior, o a la siguiente, o crear una nueva si era la única
             if (tabs.value.length > 1) {
                 // Si hay más pestañas
-                const newIndex = index > 0 ? index - 1 : index + 1; // Preferir la de la izquierda, si no la de la derecha (que ahora será el indice actual tras borrar)
+                // Preferir la de la izquierda, si no la de la derecha (que ahora será el indice actual tras borrar)
                 // Wait, if I delete current, next becomes current index.
                 // If I delete last, index-1 is new last.
                 // Logic:

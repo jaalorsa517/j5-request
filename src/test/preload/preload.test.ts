@@ -33,7 +33,7 @@ describe('Preload Script', () => {
         const ipcRendererCall = calls.find((call: any[]) => call[0] === 'ipcRenderer');
         expect(ipcRendererCall).toBeDefined();
 
-        const exposedApi = ipcRendererCall[1];
+        const exposedApi = ipcRendererCall![1];
         expect(exposedApi).toHaveProperty('on');
         expect(exposedApi).toHaveProperty('off');
         expect(exposedApi).toHaveProperty('send');
@@ -56,7 +56,7 @@ describe('Preload Script', () => {
         const electronCall = calls.find((call: any[]) => call[0] === 'electron');
         expect(electronCall).toBeDefined();
 
-        const exposedApi = electronCall[1];
+        const exposedApi = electronCall![1];
         expect(exposedApi).toHaveProperty('fs');
         expect(exposedApi).toHaveProperty('git');
         expect(exposedApi).toHaveProperty('request');
@@ -120,7 +120,7 @@ describe('Preload Script', () => {
 
             const call = mockIpcRenderer.on.mock.calls.find((c: any[]) => c[0] === 'fs:changed');
             expect(call).toBeDefined();
-            const listener = call[1];
+            const listener = call![1];
 
             listener({}, 'event', 'path');
             expect(callback).toHaveBeenCalledWith('event', 'path');

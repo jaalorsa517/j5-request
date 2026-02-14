@@ -190,7 +190,7 @@ describe('RequestExecutor', () => {
         };
 
         // Mock ScriptExecuter logic for execution
-        const mockExecute = vi.fn().mockImplementation((script, context) => ({
+        const mockExecute = vi.fn().mockImplementation((_script: any, context: any) => ({
             environment: { ...context.environment, status: context.response.status },
             logs: []
         }));
