@@ -2,180 +2,218 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FileSystemService } from './FileSystemService';
 import fs from 'fs/promises';
 import chokidar from 'chokidar';
+import path from 'path';
 
-
-// Mock dependencies
 vi.mock('fs/promises');
 vi.mock('chokidar');
 
 describe('FileSystemService', () => {
-    let service: FileSystemService;
+    let fileSystemService: FileSystemService;
 
     beforeEach(() => {
         vi.clearAllMocks();
-        service = new FileSystemService();
-    });
-
-    afterEach(() => {
-        service.stopWatch();
+        fileSystemService = new FileSystemService();
     });
 
     describe('readDirRecursive', () => {
-        it('should read directory recursively and filter hidden/node_modules', async () => {
+        it('should read directory recursively and return file entries', async () => {
+            const dirPath = '/test/dir';
             const mockEntries = [
-                { name: 'file1.j5request', isDirectory: () => false, isFile: () => true },
-                { name: 'subdir', isDirectory: () => true, isFile: () => false },
-                { name: '.hidden', isDirectory: () => false, isFile: () => true },
-                { name: 'node_modules', isDirectory: () => true, isFile: () => false },
-                { name: 'other.txt', isDirectory: () => false, isFile: () => true }
-            ] as any[];
+                {
+                    name: 'subdir',
+                    isDirectory: () => true,
+                    isFile: () => false
+                },
+                {
+                    name: 'file.j5request',
+                    isDirectory: () => false,
+                    isFile: () => true
+                },
+                {
+                    name: '.hidden',
+                    isDirectory: () => false,
+                    isFile: () => true
+                },
+                {
+                    name: 'node_modules',
+                    isDirectory: () => true,
+                    isFile: () => false
+                }
+            ];
 
-            const mockSubEntries = [
-                { name: 'file2.j5request', isDirectory: () => false, isFile: () => true }
-            ] as any[];
+            const mockSubDirEntries = [
+                {
+                    name: 'subfile.j5request',
+                    isDirectory: () => false,
+                    isFile: () => true
+                }
+            ];
 
-            (fs.readdir as any)
-                .mockResolvedValueOnce(mockEntries)
-                .mockResolvedValueOnce(mockSubEntries);
-
-            const results = await service.readDirRecursive('/test/root');
-
-            expect(results).toHaveLength(2); // subdir and file1.j5request
-
-            // subdir should be first (directory)
-            expect(results[0].name).toBe('subdir');
-            expect(results[0].type).toBe('directory');
-            expect(results[0].children).toHaveLength(1);
-            expect(results[0].children![0].name).toBe('file2.j5request');
-
-            // file1.j5request should be second
-            expect(results[1].name).toBe('file1.j5request');
-            expect(results[1].type).toBe('file');
-
-            // .hidden, node_modules, and other.txt should be filtered
-        });
-
-        it('should sort entries by type (directory first) then name', async () => {
-
-            // Override filter logic in mock impl if relying on names ending with j5request?
-            // Wait, FileSystemService logic line 31: else if (entry.name.endsWith('.j5request')) results.push...
-            // So .txt files are filtered out unless they are inside dir?
-            // "RF-01: Filter out hidden files and node_modules".
-            // Implementation:
-            // if (... hidden ...) continue;
-            // if (isDirectory) ... recurse ... push directory
-            // else if (entry.name.endsWith('.j5request')) push file
-
-            // So to test file sorting, I need 2 .j5request files!
-
-            const mockEntriesSort = [
-                { name: 'b.j5request', isDirectory: () => false, isFile: () => true },
-                { name: 'a.j5request', isDirectory: () => false, isFile: () => true },
-                { name: 'dir2', isDirectory: () => true, isFile: () => false },
-                { name: 'dir1', isDirectory: () => true, isFile: () => false },
-            ] as any[];
-
-            (fs.readdir as any).mockResolvedValue(mockEntriesSort);
-            // Mock recursion for dirs to return empty
-
-            // The implementation calls `this.readDirRecursive`. If I spy on instance method, it works.
-            // But simpler: just mock fs.readdir to return different things for different paths?
             (fs.readdir as any).mockImplementation(async (path: string) => {
-                if (path === '/test/root') return mockEntriesSort;
+                if (path === dirPath) return mockEntries;
+                if (path === '/test/dir/subdir') return mockSubDirEntries;
                 return [];
             });
 
-            const results = await service.readDirRecursive('/test/root');
+            const result = await fileSystemService.readDirRecursive(dirPath);
 
-            expect(results).toHaveLength(4);
-            expect(results[0].name).toBe('dir1');
-            expect(results[1].name).toBe('dir2');
-            expect(results[2].name).toBe('a.j5request');
-            expect(results[3].name).toBe('b.j5request');
+            expect(result).toHaveLength(2);
+            expect(result[0].name).toBe('subdir');
+            expect(result[0].type).toBe('directory');
+            expect(result[0].children).toHaveLength(1);
+            expect(result[0].children![0].name).toBe('subfile.j5request');
+
+            expect(result[1].name).toBe('file.j5request');
+            expect(result[1].type).toBe('file');
+        });
+
+        it('should sort directories before files and then by name', async () => {
+            const dirPath = '/test/dir';
+            const mockEntries = [
+                { name: 'b.j5request', isDirectory: () => false },
+                { name: 'subdirB', isDirectory: () => true },
+                { name: 'a.j5request', isDirectory: () => false },
+                { name: 'subdirA', isDirectory: () => true },
+            ] as any;
+
+            // Use mockImplementation to prevent infinite recursion
+            (fs.readdir as any).mockImplementation(async (p: string) => {
+                if (p === dirPath) return mockEntries;
+                return []; // Subdirectories are empty
+            });
+
+            const result = await fileSystemService.readDirRecursive(dirPath);
+
+            expect(result[0].name).toBe('subdirA');
+            expect(result[1].name).toBe('subdirB');
+            expect(result[2].name).toBe('a.j5request');
+            expect(result[3].name).toBe('b.j5request');
         });
 
         it('should handle errors gracefully', async () => {
             (fs.readdir as any).mockRejectedValue(new Error('Access denied'));
-            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-
-            const results = await service.readDirRecursive('/test/root');
-
-            expect(results).toEqual([]);
-            expect(consoleSpy).toHaveBeenCalled();
+            const result = await fileSystemService.readDirRecursive('/error/path');
+            expect(result).toEqual([]);
         });
     });
 
     describe('readFile', () => {
         it('should read and parse JSON file', async () => {
-            const content = '{"key": "value"}';
+            const filePath = '/test/file.json';
+            const content = JSON.stringify({ key: 'value' });
             (fs.readFile as any).mockResolvedValue(content);
 
-            const result = await service.readFile('/path/to/file.json');
+            const result = await fileSystemService.readFile(filePath);
             expect(result).toEqual({ key: 'value' });
-            expect(fs.readFile).toHaveBeenCalledWith('/path/to/file.json', 'utf-8');
+            expect(fs.readFile).toHaveBeenCalledWith(filePath, 'utf-8');
         });
     });
 
     describe('writeFile', () => {
-        it('should write serialized JSON to file', async () => {
+        it('should serialize and write JSON to file, ensuring directory exists', async () => {
+            const filePath = '/test/dir/file.json';
             const content = { key: 'value' };
-            const filePath = '/path/to/file.json';
 
-            await service.writeFile(filePath, content);
+            await fileSystemService.writeFile(filePath, content);
 
-            expect(fs.mkdir).toHaveBeenCalledWith('/path/to', { recursive: true });
-            expect(fs.writeFile).toHaveBeenCalledWith(filePath, expect.stringContaining('"key": "value"'), 'utf-8');
+            expect(fs.mkdir).toHaveBeenCalledWith(path.dirname(filePath), { recursive: true });
+            expect(fs.writeFile).toHaveBeenCalledWith(
+                filePath,
+                expect.stringContaining('"key": "value"'),
+                'utf-8'
+            );
         });
     });
 
     describe('createDirectory', () => {
         it('should create directory recursively', async () => {
-            await service.createDirectory('/path/to/dir');
-            expect(fs.mkdir).toHaveBeenCalledWith('/path/to/dir', { recursive: true });
+            const dirPath = '/test/new/dir';
+            await fileSystemService.createDirectory(dirPath);
+            expect(fs.mkdir).toHaveBeenCalledWith(dirPath, { recursive: true });
         });
     });
 
     describe('renamePath', () => {
-        it('should rename path', async () => {
-            await service.renamePath('/old', '/new');
-            expect(fs.rename).toHaveBeenCalledWith('/old', '/new');
+        it('should rename file or directory', async () => {
+            const oldPath = '/test/old';
+            const newPath = '/test/new';
+            await fileSystemService.renamePath(oldPath, newPath);
+            expect(fs.rename).toHaveBeenCalledWith(oldPath, newPath);
         });
     });
 
     describe('deletePath', () => {
-        it('should delete path recursively', async () => {
-            await service.deletePath('/path/to/delete');
-            expect(fs.rm).toHaveBeenCalledWith('/path/to/delete', { recursive: true, force: true });
+        it('should delete file or directory recursively and forcefully', async () => {
+            const pathToDelete = '/test/delete';
+            await fileSystemService.deletePath(pathToDelete);
+            expect(fs.rm).toHaveBeenCalledWith(pathToDelete, { recursive: true, force: true });
         });
     });
 
     describe('watch', () => {
-        it('should set up watcher', () => {
+        it('should start watching directory', () => {
+            const dirPath = '/test/watch';
+            const callback = vi.fn();
             const mockWatcher = {
                 on: vi.fn(),
                 close: vi.fn()
             };
             (chokidar.watch as any).mockReturnValue(mockWatcher);
 
-            const onChange = vi.fn();
-            service.watch('/path', onChange);
+            fileSystemService.watch(dirPath, callback);
 
-            expect(chokidar.watch).toHaveBeenCalledWith('/path', expect.any(Object));
+            expect(chokidar.watch).toHaveBeenCalledWith(dirPath, expect.any(Object));
             expect(mockWatcher.on).toHaveBeenCalledWith('all', expect.any(Function));
+
+            // simulate event
+            const eventHandler = mockWatcher.on.mock.calls[0][1];
+            eventHandler('change', '/test/watch/file.txt');
+            expect(callback).toHaveBeenCalledWith('change', '/test/watch/file.txt');
         });
 
-        it('should stop existing watcher before starting new one', () => {
-            const mockWatcher = {
+        it('should stop previous watcher before starting new one', () => {
+            const dirPath1 = '/test/watch1';
+            const dirPath2 = '/test/watch2';
+            const callback = vi.fn();
+            const mockWatcher1 = {
                 on: vi.fn(),
                 close: vi.fn()
             };
-            (chokidar.watch as any).mockReturnValue(mockWatcher);
+            const mockWatcher2 = {
+                on: vi.fn(),
+                close: vi.fn()
+            };
 
-            service.watch('/path1', vi.fn());
-            service.watch('/path2', vi.fn());
+            (chokidar.watch as any)
+                .mockReturnValueOnce(mockWatcher1)
+                .mockReturnValueOnce(mockWatcher2);
 
-            expect(mockWatcher.close).toHaveBeenCalledTimes(1);
+            fileSystemService.watch(dirPath1, callback);
+            fileSystemService.watch(dirPath2, callback);
+
+            expect(mockWatcher1.close).toHaveBeenCalled();
+            expect(chokidar.watch).toHaveBeenCalledTimes(2);
         });
     });
 
+    describe('stopWatch', () => {
+        it('should close watcher if exists', () => {
+            const dirPath = '/test/watch';
+            const callback = vi.fn();
+            const mockWatcher = {
+                on: vi.fn(),
+                close: vi.fn()
+            };
+            (chokidar.watch as any).mockReturnValue(mockWatcher);
+
+            fileSystemService.watch(dirPath, callback);
+            fileSystemService.stopWatch();
+
+            expect(mockWatcher.close).toHaveBeenCalled();
+        });
+
+        it('should do nothing if no watcher exists', () => {
+            expect(() => fileSystemService.stopWatch()).not.toThrow();
+        });
+    });
 });

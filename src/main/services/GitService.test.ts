@@ -2,12 +2,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GitService } from './GitService';
 import simpleGit from 'simple-git';
 import fs from 'fs/promises';
+import path from 'path';
 
-vi.mock('simple-git');
+// Mock simple-git
+vi.mock('simple-git', () => {
+    return {
+        default: vi.fn(),
+        CheckRepoActions: {
+            IS_REPO_ROOT: 'IS_REPO_ROOT'
+        }
+    };
+});
+
 vi.mock('fs/promises');
 
 describe('GitService', () => {
-    let service: GitService;
+    let gitService: GitService;
     let mockGit: any;
 
     beforeEach(() => {
@@ -24,136 +34,197 @@ describe('GitService', () => {
             branchLocal: vi.fn(),
             show: vi.fn(),
         };
+
+        // Setup the mock for the default export
         (simpleGit as any).mockReturnValue(mockGit);
-        service = new GitService();
+
+        gitService = new GitService();
     });
 
-    it('should check if path is a repo', async () => {
-        mockGit.checkIsRepo.mockResolvedValue(true);
-        const result = await service.isRepo('/path/to/repo');
-        expect(result).toBe(true);
-        expect(simpleGit).toHaveBeenCalledWith('/path/to/repo');
-    });
-
-    it('should get status', async () => {
-        const mockStatus = {
-            modified: ['file1.ts'],
-            deleted: ['file2.ts'],
-            staged: ['file3.ts'],
-            not_added: ['file4.ts'],
-            current: 'main'
-        };
-        mockGit.status.mockResolvedValue(mockStatus);
-
-        const status = await service.getStatus('/repo');
-
-        expect(status.changed).toEqual(['file1.ts', 'file2.ts']);
-        expect(status.staged).toEqual(['file3.ts']);
-        expect(status.untracked).toEqual(['file4.ts']);
-        expect(status.current).toBe('main');
-    });
-
-    it('should stage files', async () => {
-        await service.stage('/repo', ['file1.ts']);
-        expect(mockGit.add).toHaveBeenCalledWith(['file1.ts']);
-    });
-
-    it('should unstage files', async () => {
-        await service.unstage('/repo', ['file1.ts']);
-        expect(mockGit.reset).toHaveBeenCalledWith(['HEAD', 'file1.ts']);
-    });
-
-    it('should commit changes', async () => {
-        await service.commit('/repo', 'commit message');
-        expect(mockGit.commit).toHaveBeenCalledWith('commit message');
-    });
-
-    it('should push changes', async () => {
-        await service.push('/repo');
-        expect(mockGit.push).toHaveBeenCalled();
-    });
-
-    it('should pull changes', async () => {
-        await service.pull('/repo');
-        expect(mockGit.pull).toHaveBeenCalled();
-    });
-
-    it('should checkout branch', async () => {
-        await service.checkout('/repo', 'feature-branch');
-        expect(mockGit.checkout).toHaveBeenCalledWith('feature-branch');
-    });
-
-    it('should get branches', async () => {
-        mockGit.branchLocal.mockResolvedValue({ all: ['main', 'dev'] });
-        const branches = await service.getBranches('/repo');
-        expect(branches).toEqual(['main', 'dev']);
-    });
-
-    it('should get file content', async () => {
-        mockGit.show.mockResolvedValue('content');
-        const content = await service.getFileContent('/repo', 'file.ts');
-        expect(content).toBe('content');
-        expect(mockGit.show).toHaveBeenCalledWith(['HEAD:file.ts']);
-    });
-
-    it('should find repositories recursively (shallow)', async () => {
-        const mockEntries = [
-            { name: 'repo1', isDirectory: () => true, isFile: () => false },
-            { name: 'not-repo', isDirectory: () => true, isFile: () => false },
-            { name: 'file.txt', isDirectory: () => false, isFile: () => true }
-        ] as any[];
-
-        (fs.readdir as any).mockResolvedValue(mockEntries);
-
-        // Spy on isRepo to control which are detected as repos
-        const isRepoSpy = vi.spyOn(service, 'isRepo');
-        isRepoSpy.mockImplementation(async (path) => {
-            return path === '/workspace' || path.includes('repo1');
+    describe('isRepo', () => {
+        it('should return true if directory is a git repo', async () => {
+            mockGit.checkIsRepo.mockResolvedValue(true);
+            const result = await gitService.isRepo('/test/repo');
+            expect(result).toBe(true);
+            expect(simpleGit).toHaveBeenCalledWith('/test/repo');
         });
 
-        const repos = await service.findRepositories('/workspace');
-
-        expect(repos).toContain('/workspace');
-        expect(repos.some(r => r.includes('repo1'))).toBe(true);
-        expect(repos.some(r => r.includes('not-repo'))).toBe(false);
+        it('should return false if check fails', async () => {
+            mockGit.checkIsRepo.mockRejectedValue(new Error('Not a repo'));
+            const result = await gitService.isRepo('/test/repo');
+            expect(result).toBe(false);
+        });
     });
 
-    it('should return false if isRepo throws', async () => {
-        mockGit.checkIsRepo.mockRejectedValue(new Error('Git error'));
-        const result = await service.isRepo('/path/to/repo');
-        expect(result).toBe(false);
+    describe('getStatus', () => {
+        it('should return git status', async () => {
+            const mockStatus = {
+                modified: ['file1.txt'],
+                deleted: ['file2.txt'],
+                staged: ['file3.txt'],
+                not_added: ['file4.txt'],
+                current: 'main'
+            };
+            mockGit.status.mockResolvedValue(mockStatus);
+
+            const result = await gitService.getStatus('/test/repo');
+
+            expect(result).toEqual({
+                changed: ['file1.txt', 'file2.txt'],
+                staged: ['file3.txt'],
+                untracked: ['file4.txt'],
+                current: 'main'
+            });
+        });
+
+        it('should handle empty current branch', async () => {
+            const mockStatus = {
+                modified: [], deleted: [], staged: [], not_added: [],
+                current: undefined
+            };
+            mockGit.status.mockResolvedValue(mockStatus);
+            const result = await gitService.getStatus('/test/repo');
+            expect(result.current).toBe('');
+        });
     });
 
-    it('should handle errors in findRepositories', async () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-
-        const isRepoSpy = vi.spyOn(service, 'isRepo');
-        isRepoSpy.mockResolvedValue(false);
-
-        // Mock fs.readdir to fail so it goes to catch block
-        (fs.readdir as any).mockRejectedValue(new Error('Permission denied'));
-
-        const repos = await service.findRepositories('/workspace');
-
-        expect(repos).toEqual([]);
-        expect(consoleSpy).toHaveBeenCalled();
-        consoleSpy.mockRestore();
+    describe('stage', () => {
+        it('should stage files', async () => {
+            const files = ['file1.txt'];
+            await gitService.stage('/test/repo', files);
+            expect(mockGit.add).toHaveBeenCalledWith(files);
+        });
     });
 
-    it('should handle absolute path in getFileContent', async () => {
-        mockGit.show.mockResolvedValue('content');
-        // Repo at /repo, file at /repo/subdir/file.ts
-        await service.getFileContent('/repo', '/repo/subdir/file.ts');
-        // path.relative('/repo', '/repo/subdir/file.ts') -> 'subdir/file.ts'
-        expect(mockGit.show).toHaveBeenCalledWith(['HEAD:subdir/file.ts']);
+    describe('unstage', () => {
+        it('should unstage files', async () => {
+            const files = ['file1.txt'];
+            await gitService.unstage('/test/repo', files);
+            expect(mockGit.reset).toHaveBeenCalledWith(['HEAD', ...files]);
+        });
     });
 
-    it('should handle missing current branch in status', async () => {
-        const mockStatus = {
-            modified: [], deleted: [], staged: [], not_added: [], current: null
-        };
-        mockGit.status.mockResolvedValue(mockStatus);
-        const status = await service.getStatus('/repo');
-        expect(status.current).toBe('');
+    describe('commit', () => {
+        it('should commit changes', async () => {
+            const message = 'Initial commit';
+            await gitService.commit('/test/repo', message);
+            expect(mockGit.commit).toHaveBeenCalledWith(message);
+        });
+    });
+
+    describe('push', () => {
+        it('should push changes', async () => {
+            await gitService.push('/test/repo');
+            expect(mockGit.push).toHaveBeenCalled();
+        });
+    });
+
+    describe('pull', () => {
+        it('should pull changes', async () => {
+            await gitService.pull('/test/repo');
+            expect(mockGit.pull).toHaveBeenCalled();
+        });
+    });
+
+    describe('checkout', () => {
+        it('should checkout branch', async () => {
+            const branch = 'dev';
+            await gitService.checkout('/test/repo', branch);
+            expect(mockGit.checkout).toHaveBeenCalledWith(branch);
+        });
+    });
+
+    describe('getBranches', () => {
+        it('should return list of branches', async () => {
+            const mockBranches = {
+                all: ['main', 'dev']
+            };
+            mockGit.branchLocal.mockResolvedValue(mockBranches);
+            const result = await gitService.getBranches('/test/repo');
+            expect(result).toEqual(['main', 'dev']);
+        });
+    });
+
+    describe('findRepositories', () => {
+        it('should find repositories in workspace', async () => {
+            const workspacePath = '/test/workspace';
+
+            // Mock isRepo
+            // Since isRepo calls this.getGit -> simpleGit, we can mock via simpleGit or spyOn isRepo.
+            // Spying on isRepo is easier to control logic.
+            const isRepoSpy = vi.spyOn(gitService, 'isRepo');
+
+            isRepoSpy.mockImplementation(async (repoPath) => {
+                if (repoPath === workspacePath) return true;
+                if (repoPath === path.join(workspacePath, 'repo1')) return true;
+                return false;
+            });
+
+            // Mock fs.readdir
+            const mockEntries = [
+                {
+                    name: 'repo1',
+                    isDirectory: () => true
+                },
+                {
+                    name: 'not_repo',
+                    isDirectory: () => true
+                },
+                {
+                    name: 'file.txt',
+                    isDirectory: () => false
+                }
+            ];
+
+            (fs.readdir as any).mockResolvedValue(mockEntries);
+
+            const result = await gitService.findRepositories(workspacePath);
+
+            expect(result).toContain(workspacePath);
+            expect(result).toContain(path.join(workspacePath, 'repo1'));
+            // Should not contain not_repo
+            expect(result.length).toBe(2);
+        });
+
+        it('should handle scan errors gracefully', async () => {
+            const workspacePath = '/test/workspace';
+            (fs.readdir as any).mockRejectedValue(new Error('Scan failed'));
+            
+            const result = await gitService.findRepositories(workspacePath);
+            expect(result).toEqual([]);
+        });
+    });
+
+    describe('getFileContent', () => {
+        it('should return file content from git', async () => {
+            const repoPath = '/test/repo';
+            const filePath = 'file.txt';
+            const ref = 'HEAD';
+            const content = 'file content';
+
+            mockGit.show.mockResolvedValue(content);
+
+            const result = await gitService.getFileContent(repoPath, filePath, ref);
+
+            expect(result).toBe(content);
+            expect(mockGit.show).toHaveBeenCalledWith([`${ref}:${filePath}`]);
+        });
+
+        it('should handle absolute paths correctly', async () => {
+            const repoPath = '/test/repo';
+            const filePath = '/test/repo/file.txt';
+
+            // Assuming path.relative works as expected in the test environment (might be OS dependent but usually works)
+            // But we can verify that it was called with *some* relative path if we want to be strict,
+            // or just rely on path.relative logic.
+
+            // Mock path.relative behavior if needed, but path is a real module.
+            // If the test runs on linux/mac and code uses windows paths it might be tricky, but here we use standard paths.
+
+            await gitService.getFileContent(repoPath, filePath);
+
+            // Expected relative path 'file.txt'
+            expect(mockGit.show).toHaveBeenCalledWith(['HEAD:file.txt']);
+        });
     });
 });

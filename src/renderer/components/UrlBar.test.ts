@@ -75,12 +75,14 @@ describe('UrlBar.vue', () => {
     it('enables button when url exists', async () => {
         const wrapper = mount(UrlBar, {
             global: {
-                plugins: [createTestingPinia({
-                    createSpy: vi.fn,
-                    initialState: { request: { url: 'http://test.com', isLoading: false } }
-                })],
+                plugins: [pinia],
             },
         });
+        const store = useRequestStore();
+        store.url = 'http://test.com';
+        store.isLoading = false;
+        await wrapper.vm.$nextTick();
+
         const button = wrapper.find('button');
         expect(button.element.disabled).toBe(false);
     });
@@ -88,28 +90,29 @@ describe('UrlBar.vue', () => {
     it('disabled button when loading', async () => {
         const wrapper = mount(UrlBar, {
             global: {
-                plugins: [createTestingPinia({
-                    createSpy: vi.fn,
-                    initialState: { request: { url: 'http://test.com', isLoading: true } }
-                })],
+                plugins: [pinia],
             },
         });
+        const store = useRequestStore();
+        store.url = 'http://test.com';
+        store.isLoading = true;
+        await wrapper.vm.$nextTick();
+
         const button = wrapper.find('button');
         expect(button.element.disabled).toBe(true);
         expect(button.text()).toBe('Enviando...');
     });
 
     it('calls store.execute on send', async () => {
-        // Use createTestingPinia with createSpy to mock actions
         const wrapper = mount(UrlBar, {
             global: {
-                plugins: [createTestingPinia({
-                    initialState: { request: { url: 'http://test.com', isLoading: false } },
-                    createSpy: vi.fn,
-                })],
+                plugins: [pinia],
             },
         });
         const store = useRequestStore();
+        store.url = 'http://test.com';
+        store.isLoading = false;
+        await wrapper.vm.$nextTick();
 
         await wrapper.find('button').trigger('click');
         expect(store.execute).toHaveBeenCalled();

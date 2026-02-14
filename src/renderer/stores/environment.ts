@@ -135,7 +135,7 @@ export const useEnvironmentStore = defineStore('environment', () => {
             console.log('Globals saved successfully');
         } catch (e) {
             console.error('Failed to save globals', e);
-            alert('Error saving globals: ' + (e as any).message);
+            window.alert('Error saving globals: ' + (e as any).message);
         }
     }
 

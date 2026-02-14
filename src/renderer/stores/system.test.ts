@@ -7,7 +7,7 @@ describe('System Store', () => {
         setActivePinia(createPinia());
     });
 
-    it('should have correct initial state', () => {
+    it('should initialize with default values', () => {
         const store = useSystemStore();
         expect(store.workerStatus).toBe('Unknown');
         expect(store.mainStatus).toBe('Connected');

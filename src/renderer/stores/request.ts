@@ -66,8 +66,8 @@ export const useRequestStore = defineStore('request', () => {
     });
 
     const name = computed({
-        get: () => activeTab.value.request.name,
-        set: (v) => activeTab.value.request.name = v
+        get: () => activeTab.value.name,
+        set: (v) => activeTab.value.name = v
     });
 
     const method = computed({
@@ -175,7 +175,8 @@ export const useRequestStore = defineStore('request', () => {
             }
         }
 
-        tabs.value = tabs.value.filter(t => t.id !== tabId);
+        // Eliminar la pestaña
+        tabs.value.splice(index, 1);
     }
 
     function setActiveTab(tabId: string) {
@@ -285,7 +286,7 @@ export const useRequestStore = defineStore('request', () => {
 
         const request: J5Request = {
             id: reqState.id,
-            name: reqState.name,
+            name: tab.name,
             method: reqState.method,
             url: reqState.url,
             headers: reqState.headers,
@@ -333,10 +334,6 @@ export const useRequestStore = defineStore('request', () => {
 
         // Actualizar estado original después de guardar
         tab.originalState = snapshotRequest(reqState);
-        // También actualizar nombre de pestaña si cambió
-        tab.name = reqState.name;
-        // Asegurar que filePath está set
-        if (!tab.filePath) tab.filePath = targetPath;
     }
 
     // Acción: Limpiar estado (Resetear pestaña activa a estado inicial vacío)
