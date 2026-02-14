@@ -2,12 +2,12 @@ import simpleGit, { SimpleGit, CheckRepoActions } from 'simple-git';
 import path from 'path';
 import fs from 'fs/promises';
 
-export interface GitStatus {
+export type GitStatus = {
     changed: string[];
     staged: string[];
     untracked: string[];
     current: string;
-}
+};
 
 export class GitService {
 

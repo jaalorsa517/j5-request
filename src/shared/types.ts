@@ -2,12 +2,12 @@ export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD'
 
 export type RequestBodyType = 'json' | 'form-data' | 'url-encoded' | 'raw';
 
-export interface J5RequestBody {
+export type J5RequestBody = {
     type: RequestBodyType;
     content: string | Record<string, any>;
-}
+};
 
-export interface J5Request {
+export type J5Request = {
     id: string; // UUID or derived
     name: string;
     method: RequestMethod;
@@ -17,47 +17,47 @@ export interface J5Request {
     body?: J5RequestBody;
     preRequestScript?: string;
     postResponseScript?: string;
-}
+};
 
-export interface J5FileEntry {
+export type J5FileEntry = {
     name: string;
     path: string;
     type: 'file' | 'directory';
     children?: J5FileEntry[];
-}
+};
 
-export interface J5Collection {
+export type J5Collection = {
     name: string;
     path: string;
     // Metadata for collection could go here in the future
-}
+};
 
-export interface GitStatus {
+export type GitStatus = {
     changed: string[];
     staged: string[];
     untracked: string[];
     current: string;
-}
+};
 
-export interface GitRepo {
+export type GitRepo = {
     path: string;
     branch: string;
-}
+};
 
-export interface J5EnvironmentVariable {
+export type J5EnvironmentVariable = {
     key: string;
     value: string;
     type: 'default' | 'secret';
     enabled: boolean;
-}
+};
 
-export interface J5Environment {
+export type J5Environment = {
     id: string;
     name: string;
     variables: J5EnvironmentVariable[];
-}
+};
 
-export interface RequestState {
+export type RequestState = {
     id: string;
     name: string;
     method: RequestMethod;
@@ -69,16 +69,16 @@ export interface RequestState {
     bodyType: 'json' | 'text' | 'xml' | 'form-data' | 'none';
     preRequestScript: string;
     postResponseScript: string;
-}
+};
 
-export interface ResponseState {
+export type ResponseState = {
     status: number;
     statusText: string;
     headers: Record<string, string | string[]>;
     time: number;
     size: number;
     body: string;
-}
+};
 
 export type RequestTab = {
     id: string;
