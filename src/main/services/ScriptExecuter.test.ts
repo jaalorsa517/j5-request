@@ -104,6 +104,60 @@ describe('ScriptExecuter', () => {
         expect(() => scriptExecuter.execute(script, context)).toThrow('Script execution failed: Error: Test Error');
     });
 
+    it('should handle response.json() with invalid json string', () => {
+        const script = `
+            try {
+                const val = pm.response.json();
+                pm.environment.set('val', String(val));
+            } catch (e) {
+                pm.environment.set('error', 'caught');
+            }
+        `;
+        const context: ExecutionContext = {
+            environment: {},
+            response: {
+                status: 200,
+                data: '{ invalid json }' // String but not JSON
+            }
+        };
+        const result = scriptExecuter.execute(script, context);
+        expect(result.environment.val).toBe('null');
+        expect(result.environment.error).toBeUndefined();
+    });
+
+    it('should handle response.text() with string data', () => {
+        const script = `
+            const val = pm.response.text();
+            pm.environment.set('val', val);
+        `;
+        const context: ExecutionContext = {
+            environment: {},
+            response: {
+                status: 200,
+                data: 'plain text'
+            }
+        };
+        const result = scriptExecuter.execute(script, context);
+        expect(result.environment.val).toBe('plain text');
+    });
+
+    it('should handle console.warn and console.error', () => {
+        const warnSpy = vi.spyOn(console, 'warn');
+        const errorSpy = vi.spyOn(console, 'error');
+
+        const script = `
+            console.warn('warning');
+            console.error('error');
+        `;
+        scriptExecuter.execute(script, { environment: {} });
+
+        expect(warnSpy).toHaveBeenCalledWith('[Script Warn]', 'warning');
+        expect(errorSpy).toHaveBeenCalledWith('[Script Error]', 'error');
+
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+    });
+
     it('should prevent infinite loops with timeout', () => {
         const script = `
             while(true) {}

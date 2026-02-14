@@ -2,23 +2,27 @@ schema: spec-driven
 
 context: |
   Idioma: Español
-  Todos los artefactos deben escribirse en español.
+  TODOS los artefactos deben escribirse en español.
+  Este proyecto es una aplicación de escritorio desarrollada con Electron y Vue 3.
+  El proyecto utiliza TypeScript para el tipado. No usar `interface` para definir tipos, usar `type` en su lugar.
+  
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+rules:
+  proposal:
+    - Idioma: Español
+    
+  design:
+    - Idioma: Español
+    - Priorizar implementación haciendo uso de Test Driven Development (TDD).
+    - Lenguaje Typescript.
+    - No usar `interface` para definir tipos, usar `type` en su lugar.
+    - Seguir principios SOLID y clean code. NO llenar de comentarios sino que los nombres de las funciones, clases, métodos, etc. deben ser descriptivos.
+    - Usar TDD para el desarrollo de la aplicación. 
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  tasks:
+    - Idioma: Español
+    - Agregar una tarea de crNo usareación de unit test con la cobertura al 100%.
+
+  specs:
+    - Idioma: Español
+

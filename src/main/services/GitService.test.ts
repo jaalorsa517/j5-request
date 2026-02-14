@@ -22,7 +22,6 @@ describe('GitService', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-
         mockGit = {
             checkIsRepo: vi.fn(),
             status: vi.fn(),
@@ -76,6 +75,16 @@ describe('GitService', () => {
                 untracked: ['file4.txt'],
                 current: 'main'
             });
+        });
+
+        it('should handle empty current branch', async () => {
+            const mockStatus = {
+                modified: [], deleted: [], staged: [], not_added: [],
+                current: undefined
+            };
+            mockGit.status.mockResolvedValue(mockStatus);
+            const result = await gitService.getStatus('/test/repo');
+            expect(result.current).toBe('');
         });
     });
 
@@ -175,6 +184,14 @@ describe('GitService', () => {
             expect(result).toContain(path.join(workspacePath, 'repo1'));
             // Should not contain not_repo
             expect(result.length).toBe(2);
+        });
+
+        it('should handle scan errors gracefully', async () => {
+            const workspacePath = '/test/workspace';
+            (fs.readdir as any).mockRejectedValue(new Error('Scan failed'));
+            
+            const result = await gitService.findRepositories(workspacePath);
+            expect(result).toEqual([]);
         });
     });
 

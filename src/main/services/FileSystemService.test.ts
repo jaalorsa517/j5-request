@@ -67,6 +67,29 @@ describe('FileSystemService', () => {
             expect(result[1].type).toBe('file');
         });
 
+        it('should sort directories before files and then by name', async () => {
+            const dirPath = '/test/dir';
+            const mockEntries = [
+                { name: 'b.j5request', isDirectory: () => false },
+                { name: 'subdirB', isDirectory: () => true },
+                { name: 'a.j5request', isDirectory: () => false },
+                { name: 'subdirA', isDirectory: () => true },
+            ] as any;
+
+            // Use mockImplementation to prevent infinite recursion
+            (fs.readdir as any).mockImplementation(async (p: string) => {
+                if (p === dirPath) return mockEntries;
+                return []; // Subdirectories are empty
+            });
+
+            const result = await fileSystemService.readDirRecursive(dirPath);
+
+            expect(result[0].name).toBe('subdirA');
+            expect(result[1].name).toBe('subdirB');
+            expect(result[2].name).toBe('a.j5request');
+            expect(result[3].name).toBe('b.j5request');
+        });
+
         it('should handle errors gracefully', async () => {
             (fs.readdir as any).mockRejectedValue(new Error('Access denied'));
             const result = await fileSystemService.readDirRecursive('/error/path');

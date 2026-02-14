@@ -13,7 +13,8 @@ const mockFs = {
 vi.stubGlobal('window', {
     electron: {
         fs: mockFs
-    }
+    },
+    alert: vi.fn()
 });
 
 // Mock console to avoid noise and test errors
@@ -45,6 +46,20 @@ describe('Environment Store', () => {
         expect(store.globals.variables[0].key).toBe('g1');
     });
 
+    it('should handle missing variables in globals file', async () => {
+        mockFs.readFile.mockResolvedValue({ id: 'globals', name: 'Globals' }); // missing variables array
+        const store = useEnvironmentStore();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(store.globals.variables).toEqual([]);
+    });
+
+    it('should handle error in loadGlobals gracefully', async () => {
+        mockFs.getGlobalsPath.mockRejectedValue(new Error('Path error'));
+        const store = useEnvironmentStore();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        // should not throw
+    });
+
     it('should create new environment', () => {
         const store = useEnvironmentStore();
         store.createNewEnvironment('New Env');
@@ -69,6 +84,25 @@ describe('Environment Store', () => {
         expect(store.activeEnvironmentPath).toBe('/path/to/env.json');
     });
 
+    it('should handle invalid environment file format', async () => {
+        const store = useEnvironmentStore();
+        mockFs.readFile.mockResolvedValue(null); // Invalid format
+        await expect(store.loadEnvironmentFromFile('/path/to/env.json')).rejects.toThrow('Invalid environment file format');
+    });
+
+    it('should handle loadEnvironmentFromFile error', async () => {
+        const store = useEnvironmentStore();
+        mockFs.readFile.mockRejectedValue(new Error('Read error'));
+        await expect(store.loadEnvironmentFromFile('/path/to/env.json')).rejects.toThrow('Read error');
+    });
+
+    it('should handle missing variables in loaded environment', async () => {
+        const store = useEnvironmentStore();
+        mockFs.readFile.mockResolvedValue({ id: 'env1', name: 'Env 1' }); // missing variables array
+        await store.loadEnvironmentFromFile('/path/to/env.json');
+        expect(store.activeEnvironment?.variables).toEqual([]);
+    });
+
     it('should save active environment (new)', async () => {
         const store = useEnvironmentStore();
         store.createNewEnvironment('New Env');
@@ -87,6 +121,14 @@ describe('Environment Store', () => {
             expect.objectContaining({ name: 'New Env' })
         );
         expect(store.activeEnvironmentPath).toBe('/path/to/new_env.json');
+    });
+
+    it('should handle cancelled saveFileDialog', async () => {
+        const store = useEnvironmentStore();
+        store.createNewEnvironment('New Env');
+        mockFs.saveFileDialog.mockResolvedValue(null);
+        await store.saveActiveEnvironment();
+        expect(mockFs.writeFile).not.toHaveBeenCalled();
     });
 
     it('should save active environment (existing)', async () => {
@@ -114,6 +156,16 @@ describe('Environment Store', () => {
             '/path/to/globals.json',
             expect.objectContaining({ name: 'G' })
         );
+    });
+
+    it('should handle saveGlobals error', async () => {
+        const store = useEnvironmentStore();
+        mockFs.writeFile.mockRejectedValue(new Error('Write error'));
+        const alertSpy = vi.spyOn(window, 'alert');
+        
+        await store.saveGlobals();
+        
+        expect(alertSpy).toHaveBeenCalledWith('Error saving globals: Write error');
     });
 
     it('should calculate currentVariables correctly', async () => {
@@ -160,16 +212,31 @@ describe('Environment Store', () => {
         store.updateVariablesFromExecution({ a1: 'new' });
         expect(store.activeEnvironment.variables.find(v => v.key === 'a1')?.value).toBe('new');
 
-        // Update existing in global (fallback) - NO, active env is present so it updates active?
-        // Logic:
-        // 1. Try to update in target (Active) -> Not found
-        // 2. Try to update in fallback (Globals) if active exists -> Found in globals?
+        // Update with same value (branch coverage)
+        store.updateVariablesFromExecution({ a1: 'new' });
+        expect(store.activeEnvironment.variables.find(v => v.key === 'a1')?.value).toBe('new');
 
+        // Update existing in global (fallback)
+        store.updateVariablesFromExecution({ g1: 'new' });
+        expect(store.globals.variables.find(v => v.key === 'g1')?.value).toBe('new');
+
+        // Update with same value in globals (branch coverage)
         store.updateVariablesFromExecution({ g1: 'new' });
         expect(store.globals.variables.find(v => v.key === 'g1')?.value).toBe('new');
 
         // Add new
         store.updateVariablesFromExecution({ newKey: 'newValue' });
         expect(store.activeEnvironment.variables.find(v => v.key === 'newKey')?.value).toBe('newValue');
+    });
+
+    it('should close environment', () => {
+        const store = useEnvironmentStore();
+        store.activeEnvironment = { id: '1', name: 'Env', variables: [] };
+        store.activeEnvironmentPath = '/path/to/env.json';
+        
+        store.closeEnvironment();
+        
+        expect(store.activeEnvironment).toBeNull();
+        expect(store.activeEnvironmentPath).toBeNull();
     });
 });

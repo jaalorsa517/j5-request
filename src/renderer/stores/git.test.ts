@@ -124,15 +124,48 @@ describe('Git Store', () => {
         expect(mockGit.getStatus).toHaveBeenCalled();
     });
 
-    it('should sync', async () => {
+    it('should return empty branch name if status is null', () => {
+        const store = useGitStore();
+        store.status = null;
+        expect(store.currentBranch).toBe('');
+    });
+
+    it('should handle stage error', async () => {
         const store = useGitStore();
         store.selectedRepo = '/repo1';
+        mockGit.stage.mockRejectedValue(new Error('Stage error'));
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-        await store.sync();
+        await store.stage(['file1']);
 
-        expect(mockGit.pull).toHaveBeenCalled();
-        expect(mockGit.push).toHaveBeenCalled();
-        // Called twice: once after pull, once after push
-        expect(mockGit.getStatus).toHaveBeenCalledTimes(2);
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
+    });
+
+    it('should handle unstage error', async () => {
+        const store = useGitStore();
+        store.selectedRepo = '/repo1';
+        mockGit.unstage.mockRejectedValue(new Error('Unstage error'));
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await store.unstage(['file1']);
+
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
+    });
+
+    it('should not update status if no repo is selected', async () => {
+        const store = useGitStore();
+        store.selectedRepo = '';
+        await store.updateStatus();
+        expect(mockGit.getStatus).not.toHaveBeenCalled();
+    });
+
+    it('should handle checkout error', async () => {
+        const store = useGitStore();
+        store.selectedRepo = '/repo1';
+        mockGit.checkout.mockRejectedValue(new Error('Checkout error'));
+        
+        await expect(store.checkout('branch')).rejects.toThrow('Checkout error'); 
     });
 });

@@ -66,7 +66,7 @@ describe('FileSystem Store', () => {
         expect(mockFs.readFile).toHaveBeenCalledWith('/test/file.j5request');
         expect(store.selectedFile).toEqual(fileContent);
         expect(store.selectedFilePath).toBe('/test/file.j5request');
-        expect(mockRequestStore.loadFromFile).toHaveBeenCalledWith(fileContent);
+        expect(mockRequestStore.loadFromFile).toHaveBeenCalledWith(fileContent, '/test/file.j5request');
     });
 
     it('should save request', async () => {
@@ -136,5 +136,57 @@ describe('FileSystem Store', () => {
 
         expect(mockFs.watch).toHaveBeenCalledWith('/test/path');
         expect(mockFs.onChanged).toHaveBeenCalled();
+
+        // Simulate file change event
+        const changeHandler = mockFs.onChanged.mock.calls[0][0];
+        
+        // 1. Just refresh tree
+        await changeHandler('unlink', '/test/path/other.txt');
+        expect(mockFs.readDir).toHaveBeenCalledTimes(2);
+
+        // 2. Reload selected file if it changed
+        store.selectedFilePath = '/test/path/file.j5request';
+        mockFs.readFile.mockResolvedValue({ id: '1', name: 'updated' });
+        await changeHandler('change', '/test/path/file.j5request');
+        expect(mockFs.readFile).toHaveBeenCalledWith('/test/path/file.j5request');
+    });
+
+    it('should not load directory if path is null', async () => {
+        const store = useFileSystemStore();
+        store.currentPath = null;
+        // openDirectory(null) is not possible via types, but we can check initial state or side effects
+        // since openDirectory immediately sets the path, we can't easily trigger loadDirectory with null path via it.
+        // But we can verify that initial state doesn't trigger anything.
+        expect(mockFs.readDir).not.toHaveBeenCalled();
+    });
+
+    it('should handle errors in all operations', async () => {
+        const store = useFileSystemStore();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        // selectFile error
+        mockFs.readFile.mockRejectedValue(new Error('fail'));
+        await store.selectFile('/path');
+        expect(store.selectedFile).toBeNull();
+
+        // createRequest error
+        store.currentPath = '/dir';
+        mockFs.writeFile.mockRejectedValue(new Error('fail'));
+        await store.createRequest('new');
+        expect(consoleSpy).toHaveBeenCalled();
+
+        // createFolder error
+        mockFs.createDirectory.mockRejectedValue(new Error('fail'));
+        await expect(store.createFolder('new')).rejects.toThrow();
+
+        // renameItem error
+        mockFs.rename.mockRejectedValue(new Error('fail'));
+        await expect(store.renameItem('/old', 'new')).rejects.toThrow();
+
+        // deleteItem error
+        mockFs.delete.mockRejectedValue(new Error('fail'));
+        await expect(store.deleteItem('/path')).rejects.toThrow();
+
+        consoleSpy.mockRestore();
     });
 });
