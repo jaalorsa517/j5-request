@@ -34,11 +34,11 @@ async function openEnv() {
 .envSelector {
     display: flex;
     align-items: center;
-    background: #252526;
+    background: var(--bg-secondary);
     border-radius: 4px;
     height: 28px;
     max-width: 200px;
-    border: 1px solid #333;
+    border: 1px solid var(--border-color);
 }
 
 .current-env {
@@ -51,16 +51,16 @@ async function openEnv() {
     gap: 6px;
 }
 .current-env:hover {
-    background: #2d2d2d;
+    background: var(--bg-tertiary);
 }
 
 .label {
-    color: #888;
+    color: var(--text-secondary);
     font-size: 11px;
 }
 
 .value {
-    color: #ffd700; /* Gold for env */
+    color: var(--text-gold); /* Gold for env */
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
@@ -69,13 +69,13 @@ async function openEnv() {
 }
 
 .value.no-env {
-    color: #666;
+    color: var(--text-secondary);
     font-style: italic;
 }
 
 .actions {
     display: flex;
-    border-left: 1px solid #333;
+    border-left: 1px solid var(--border-color);
 }
 
 .icon-btn {
@@ -86,10 +86,11 @@ async function openEnv() {
     font-size: 12px;
     height: 28px;
     opacity: 0.7;
+    color: var(--text-primary);
 }
 
 .icon-btn:hover {
-    background: #333;
+    background: var(--bg-tertiary);
     opacity: 1;
 }
 </style>

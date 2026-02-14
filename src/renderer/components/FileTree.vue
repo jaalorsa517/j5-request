@@ -43,14 +43,14 @@ const store = useFileSystemStore();
   padding: 4px 8px;
   cursor: pointer;
   border-radius: 4px;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 .file-entry:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--bg-tertiary);
 }
 .file-entry--selected {
-  background-color: #2e7d32;
-  color: white;
+  background-color: var(--accent-color);
+  color: var(--text-inverse);
 }
 .icon {
   margin-right: 6px;

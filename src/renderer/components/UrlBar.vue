@@ -39,17 +39,17 @@ async function sendRequest() {
     display: flex;
     gap: 8px;
     padding: 12px;
-    background-color: #1e1e1e;
-    border-bottom: 1px solid #333;
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
     width: 100%;
     box-sizing: border-box;
 }
 
 .urlBar__methodSelector {
     padding: 8px 12px;
-    background-color: #2d2d2d;
-    color: #fff;
-    border: 1px solid #444;
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     cursor: pointer;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -58,21 +58,21 @@ async function sendRequest() {
 .urlBar__input {
     flex: 1;
     padding: 8px 12px;
-    background-color: #2d2d2d;
-    color: #fff;
-    border: 1px solid #444;
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .urlBar__input::placeholder {
-    color: #888;
+    color: var(--text-secondary);
 }
 
 .urlBar__sendButton {
     padding: 8px 24px;
-    background-color: #0e639c;
-    color: #fff;
+    background-color: var(--accent-color);
+    color: var(--text-inverse);
     border: none;
     border-radius: 4px;
     cursor: pointer;
@@ -81,7 +81,7 @@ async function sendRequest() {
 }
 
 .urlBar__sendButton:hover:not(:disabled) {
-    background-color: #1177bb;
+    background-color: var(--accent-hover);
 }
 
 .urlBar__sendButton:disabled {

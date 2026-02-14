@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor';
+import { useThemeStore } from '../stores/theme';
 
 interface Props {
     modelValue: string;
@@ -17,6 +18,7 @@ const emit = defineEmits<{
     'update:modelValue': [value: string];
 }>();
 
+const themeStore = useThemeStore();
 const editorValue = ref(props.modelValue);
 
 // Sincronizar cambios del padre al editor
@@ -33,15 +35,19 @@ function handleChange(value: string | undefined) {
     emit('update:modelValue', newValue);
 }
 
-const editorOptions = {
+const editorTheme = computed(() => {
+    return themeStore.theme === 'dark' ? 'vs-dark' : 'vs';
+});
+
+const editorOptions = computed(() => ({
     automaticLayout: true,
     formatOnPaste: true,
     formatOnType: true,
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
     readOnly: props.readOnly,
-    theme: 'vs-dark',
-};
+    theme: editorTheme.value,
+}));
 </script>
 
 <template>
@@ -50,6 +56,7 @@ const editorOptions = {
             v-model:value="editorValue"
             :language="language"
             :options="editorOptions"
+            :theme="editorTheme"
             @change="handleChange"
         />
     </div>

@@ -9,11 +9,13 @@ import EnvironmentManagerModal from './EnvironmentManagerModal.vue';
 import { useFileSystemStore } from '../stores/file-system';
 import { useRequestStore } from '../stores/request';
 import { useEnvironmentStore } from '../stores/environment';
+import { useThemeStore } from '../stores/theme';
 import { ref } from 'vue';
 
 const store = useFileSystemStore();
 const requestStore = useRequestStore();
 const envStore = useEnvironmentStore();
+const themeStore = useThemeStore();
 const showNewRequestModal = ref(false);
 const newRequestName = ref('');
 
@@ -113,6 +115,14 @@ function closeDiff() {
             >
                 🌲
             </button>
+            <div style="flex: 1;"></div>
+            <button
+                class="activityBar__item"
+                @click="themeStore.toggleTheme()"
+                title="Toggle Theme"
+            >
+                {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
+            </button>
         </div>
 
         <!-- Sidebar -->
@@ -197,8 +207,8 @@ function closeDiff() {
     display: flex;
     height: 100vh;
     width: 100vw;
-    background-color: #1e1e1e;
-    color: #e0e0e0;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 
@@ -206,12 +216,12 @@ function closeDiff() {
 /* Activity Bar */
 .activityBar {
     width: 48px;
-    background-color: #333333;
+    background-color: var(--bg-tertiary);
     display: flex;
     flex-direction: column;
     align-items: center;
     padding-top: 10px;
-    border-right: 1px solid #252526;
+    border-right: 1px solid var(--border-color);
 }
 
 .activityBar__item {
@@ -235,22 +245,22 @@ function closeDiff() {
 
 .activityBar__item.active {
     opacity: 1;
-    border-left: 2px solid #0e639c; /* Active indicator */
-    background-color: #252526;
+    border-left: 2px solid var(--accent-color); /* Active indicator */
+    background-color: var(--bg-secondary);
 }
 
 /* Sidebar */
 .mainLayout__sidebar {
     width: 280px;
-    background-color: #252526;
-    border-right: 1px solid #333;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
 }
 
 .mainLayout__sidebarHeader {
     padding: 12px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -259,9 +269,9 @@ function closeDiff() {
 .mainLayout__actionButton {
     width: 100%;
     padding: 8px;
-    background-color: #333;
-    border: 1px solid #444;
-    color: #eee;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
     cursor: pointer;
     border-radius: 4px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -269,7 +279,7 @@ function closeDiff() {
 }
 
 .mainLayout__actionButton:hover:not(:disabled) {
-    background-color: #444;
+    background-color: var(--input-border);
 }
 
 .mainLayout__actionButton:disabled {
@@ -278,19 +288,23 @@ function closeDiff() {
 }
 
 .mainLayout__actionButton--save {
-    background-color: #0e639c;
+    background-color: var(--accent-color);
+    color: var(--text-inverse);
+    border: none;
 }
 
 .mainLayout__actionButton--save:hover:not(:disabled) {
-    background-color: #1177bb;
+    background-color: var(--accent-hover);
 }
 
 .mainLayout__actionButton--dirty {
-    background-color: #d97706;
+    background-color: var(--accent-dirty);
+    color: var(--text-inverse);
+    border: none;
 }
 
 .mainLayout__actionButton--dirty:hover:not(:disabled) {
-    background-color: #f59e0b;
+    background-color: var(--accent-dirty-hover);
 }
 
 .mainLayout__sidebarContent {
@@ -317,7 +331,7 @@ function closeDiff() {
 }
 
 .mainLayout__panel--request {
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-color);
 }
 
 /* Modal */
@@ -335,10 +349,10 @@ function closeDiff() {
 }
 
 .mainLayout__modal {
-    background: #252526;
+    background: var(--bg-modal);
     padding: 24px;
     border-radius: 8px;
-    border: 1px solid #444;
+    border: 1px solid var(--input-border);
     width: 320px;
     display: flex;
     flex-direction: column;
@@ -348,14 +362,14 @@ function closeDiff() {
 .mainLayout__modalTitle {
     margin: 0;
     font-size: 1.2rem;
-    color: #fff;
+    color: var(--text-primary);
 }
 
 .mainLayout__modalInput {
     padding: 10px;
-    background: #333;
-    border: 1px solid #444;
-    color: white;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
     border-radius: 4px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -369,31 +383,32 @@ function closeDiff() {
 .mainLayout__modalActions button {
     padding: 8px 16px;
     cursor: pointer;
-    background: #444;
+    background: var(--input-border);
     border: none;
-    color: white;
+    color: var(--text-primary);
     border-radius: 4px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     transition: background-color 0.2s;
 }
 
 .mainLayout__modalActions button:hover {
-    background: #555;
+    background: var(--bg-tertiary);
 }
 
 .mainLayout__modalActions button:last-child {
-    background: #0e639c;
+    background: var(--accent-color);
+    color: var(--text-inverse);
 }
 
 .mainLayout__modalActions button:last-child:hover {
-    background: #1177bb;
+    background: var(--accent-hover);
 }
 
 /* Diff View */
 .diff-header {
     height: 35px;
-    background-color: #1e1e1e;
-    border-bottom: 1px solid #333;
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     padding: 0 10px;
@@ -401,14 +416,14 @@ function closeDiff() {
 
 .close-diff-btn {
     background: none;
-    border: 1px solid #444;
-    color: #ccc;
+    border: 1px solid var(--input-border);
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 0.9em;
     padding: 2px 8px;
     border-radius: 3px;
 }
 .close-diff-btn:hover {
-    background: #333;
+    background: var(--bg-tertiary);
 }
 </style>

@@ -131,8 +131,8 @@ const headersList = computed(() => {
     justify-content: space-between;
     align-items: center;
     padding: 0 12px;
-    background-color: #1e1e1e;
-    border-bottom: 1px solid #333;
+    background-color: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
     height: 36px;
 }
 
@@ -144,7 +144,7 @@ const headersList = computed(() => {
 .tab {
     background: none;
     border: none;
-    color: #888;
+    color: var(--text-secondary);
     padding: 0 16px;
     height: 100%;
     cursor: pointer;
@@ -154,12 +154,12 @@ const headersList = computed(() => {
 }
 
 .tab:hover {
-    color: #ccc;
+    color: var(--text-primary);
 }
 
 .tab--active {
-    color: #fff;
-    border-bottom-color: #0e639c;
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-color);
 }
 
 .actions {
@@ -170,7 +170,7 @@ const headersList = computed(() => {
 .action-btn {
     background: none;
     border: none;
-    color: #666;
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 12px;
     padding: 2px 6px;
@@ -178,12 +178,12 @@ const headersList = computed(() => {
 }
 
 .action-btn:hover {
-    color: #aaa;
+    color: var(--text-primary);
 }
 
 .action-btn--active {
-    color: #fff;
-    background-color: #333;
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
 }
 
 .responseBodyViewer__content {
@@ -206,7 +206,7 @@ const headersList = computed(() => {
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #888;
+    color: var(--text-secondary);
     font-style: italic;
 }
 
@@ -225,13 +225,13 @@ const headersList = computed(() => {
 
 .headers-row {
     display: flex;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .headers-row.header {
-    background-color: #2d2d2d;
+    background-color: var(--bg-secondary);
     font-weight: bold;
-    color: #ccc;
+    color: var(--text-secondary);
     position: sticky;
     top: 0;
 }
@@ -239,19 +239,19 @@ const headersList = computed(() => {
 .headers-cell {
     padding: 8px 12px;
     font-size: 13px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     overflow-wrap: break-word;
 }
 
 .headers-cell.key {
     width: 30%;
     min-width: 150px;
-    border-right: 1px solid #333;
-    color: #9cdcfe;
+    border-right: 1px solid var(--border-color);
+    color: var(--syntax-key);
 }
 
 .headers-cell.value {
     flex: 1;
-    color: #ce9178;
+    color: var(--syntax-string);
 }
 </style>

@@ -5,11 +5,11 @@ import { useRequestStore } from '../stores/request';
 const requestStore = useRequestStore();
 
 const statusColor = computed(() => {
-    if (!requestStore.response) return '#888';
+    if (!requestStore.response) return 'var(--text-secondary)';
     const status = requestStore.response.status;
-    if (status >= 200 && status < 300) return '#4caf50'; // Verde
-    if (status >= 300 && status < 400) return '#ff9800'; // Amarillo
-    return '#f44336'; // Rojo
+    if (status >= 200 && status < 300) return 'var(--success-color)';
+    if (status >= 300 && status < 400) return 'var(--warning-color)';
+    return 'var(--error-color)';
 });
 
 const formattedSize = computed(() => {
@@ -54,8 +54,8 @@ const formattedSize = computed(() => {
 <style scoped>
 .responseMeta {
     padding: 12px;
-    background-color: #252526;
-    border-bottom: 1px solid #333;
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .responseMeta__stats {
@@ -70,14 +70,14 @@ const formattedSize = computed(() => {
 }
 
 .responseMeta__label {
-    color: #888;
+    color: var(--text-secondary);
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
 }
 
 .responseMeta__value {
-    color: #fff;
+    color: var(--text-primary);
     font-size: 14px;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -87,12 +87,12 @@ const formattedSize = computed(() => {
 }
 
 .responseMeta__empty {
-    color: #888;
+    color: var(--text-secondary);
     font-style: italic;
 }
 
 .responseMeta__error {
-    color: #f44336;
+    color: var(--error-color);
     font-weight: bold;
 }
 </style>

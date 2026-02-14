@@ -44,7 +44,7 @@ const requestStore = useRequestStore();
     flex-direction: column;
     height: 100%;
     width: 100%;
-    background-color: #1e1e1e;
+    background-color: var(--bg-primary);
     overflow: hidden;
 }
 </style>
