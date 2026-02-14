@@ -5,13 +5,13 @@ import { J5Request } from '../../shared/types';
 import { ScriptExecuter, ExecutionContext } from './ScriptExecuter';
 import { EnvironmentManager } from './EnvironmentManager';
 
-export interface ExecutionResult {
+export type ExecutionResult = {
     success: boolean;
     response?: any;
     error?: string;
     environment: Record<string, string>;
     executionTime: number;
-}
+};
 
 export class RequestExecutor {
     private scriptExecuter: ScriptExecuter;

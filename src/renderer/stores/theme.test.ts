@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useThemeStore } from './theme'
@@ -10,9 +13,10 @@ describe('Theme Store', () => {
         // Clear localStorage
         localStorage.clear()
 
-        // Mock matchMedia
+        // Reset matchMedia to default (light)
         Object.defineProperty(window, 'matchMedia', {
             writable: true,
+            configurable: true,
             value: vi.fn().mockImplementation(query => ({
                 matches: false,
                 media: query,

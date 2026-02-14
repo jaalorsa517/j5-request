@@ -6,6 +6,7 @@ import GitPanel from './git/GitPanel.vue';
 import DiffEditor from './git/DiffEditor.vue';
 import EnvironmentSelector from './EnvironmentSelector.vue';
 import EnvironmentManagerModal from './EnvironmentManagerModal.vue';
+import RequestTabBar from './RequestTabBar.vue';
 import { useFileSystemStore } from '../stores/file-system';
 import { useRequestStore } from '../stores/request';
 import { useEnvironmentStore } from '../stores/environment';
@@ -29,9 +30,13 @@ const diffModified = ref('');
 const diffLanguage = ref('json');
 
 async function openFolder() {
-    const path = await window.electron.fs.selectFolder();
-    if (path) {
-        await store.openDirectory(path);
+    try {
+        const path = await window.electron.fs.selectFolder();
+        if (path) {
+            await store.openDirectory(path);
+        }
+    } catch (e: any) {
+        alert('Error opening folder: ' + e.message);
     }
 }
 
@@ -42,13 +47,21 @@ function openCreateModal() {
 
 async function confirmCreateRequest() {
     if (newRequestName.value) {
-        await store.createRequest(newRequestName.value);
-        showNewRequestModal.value = false;
+        try {
+            await store.createRequest(newRequestName.value);
+            showNewRequestModal.value = false;
+        } catch (e: any) {
+            alert('Error creating request: ' + e.message);
+        }
     }
 }
 
 async function saveRequest() {
-    await requestStore.saveToFile();
+    try {
+        await requestStore.saveToFile();
+    } catch (e: any) {
+        alert('Error saving request: ' + e.message);
+    }
 }
 
 async function handleOpenDiff(file: string, repoPath: string) {
@@ -85,8 +98,9 @@ async function handleOpenDiff(file: string, repoPath: string) {
         else if (file.endsWith('.js') || file.endsWith('.ts')) diffLanguage.value = 'typescript';
         else diffLanguage.value = 'plaintext';
         
-    } catch (e) {
+    } catch (e: any) {
         console.error("Failed to open diff", e);
+        alert('Error opening diff: ' + e.message);
     }
 }
 
@@ -159,6 +173,8 @@ function closeDiff() {
 
         <!-- Workspace -->
         <div class="mainLayout__workspace">
+            <RequestTabBar />
+            
             <template v-if="showDiff">
                  <div class="diff-header">
                      <button @click="closeDiff" class="close-diff-btn">❌ Close Diff</button>

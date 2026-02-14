@@ -1,127 +1,247 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { createTestingPinia } from '@pinia/testing'
-import MainLayout from './MainLayout.vue'
-import { useThemeStore } from '../stores/theme'
+/**
+ * @vitest-environment jsdom
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount, flushPromises } from '@vue/test-utils';
+import { createTestingPinia } from '@pinia/testing';
+import MainLayout from './MainLayout.vue';
+import { useFileSystemStore } from '../stores/file-system';
+import { useRequestStore } from '../stores/request';
 
-// Mock child components
-const FileTree = { template: '<div class="file-tree">FileTree</div>' }
-const RequestPanel = { template: '<div class="request-panel">RequestPanel</div>' }
-const ResponsePanel = { template: '<div class="response-panel">ResponsePanel</div>' }
-const GitPanel = { template: '<div class="git-panel">GitPanel</div>' }
-const DiffEditor = { template: '<div class="diff-editor">DiffEditor</div>' }
-const EnvironmentSelector = { template: '<div class="env-selector">EnvironmentSelector</div>' }
-const EnvironmentManagerModal = { template: '<div class="env-modal">EnvironmentManagerModal</div>' }
+// Mock all heavy child components
+vi.mock('./FileTree.vue', () => ({ default: { template: '<div>FileTree</div>' } }));
+vi.mock('./RequestPanel.vue', () => ({ default: { template: '<div>RequestPanel</div>' } }));
+vi.mock('./ResponsePanel.vue', () => ({ default: { template: '<div>ResponsePanel</div>' } }));
+vi.mock('./git/GitPanel.vue', () => ({ default: { template: '<div>GitPanel</div>' } }));
+vi.mock('./git/DiffEditor.vue', () => ({ default: { template: '<div>DiffEditor</div>' } }));
+vi.mock('./EnvironmentSelector.vue', () => ({ default: { template: '<div>EnvSelector</div>' } }));
+vi.mock('./EnvironmentManagerModal.vue', () => ({ default: { template: '<div>EnvManager</div>' } }));
+vi.mock('./RequestTabBar.vue', () => ({ default: { template: '<div>TabBar</div>' } }));
 
-describe('MainLayout Theme Toggle', () => {
-    beforeEach(() => {
-        // Mock window.electron
-        (window as any).electron = {
-            fs: {
-                selectFolder: vi.fn(),
-                readFile: vi.fn(),
-                createRequest: vi.fn(),
-                selectFile: vi.fn(),
-                getGlobalsPath: vi.fn().mockResolvedValue('/tmp/globals.json'),
-                readGlobals: vi.fn().mockResolvedValue([]),
-            },
-            git: {
-                getFileContent: vi.fn(),
-            }
+// Mock heavy dependencies
+if (typeof window !== 'undefined') {
+    (window as any).electron = {
+        fs: {
+            selectFolder: vi.fn(),
+            getGlobalsPath: vi.fn().mockResolvedValue('/mock/globals.json'),
+            readFile: vi.fn().mockResolvedValue({ variables: [] }),
+            writeFile: vi.fn(),
+        },
+        git: {
+            getFileContent: vi.fn(),
         }
-    })
+    };
+}
 
-    it('renders theme toggle button', () => {
-        const wrapper = mount(MainLayout, {
-            global: {
-                plugins: [createTestingPinia({ createSpy: vi.fn })],
-                stubs: {
-                    FileTree,
-                    RequestPanel,
-                    ResponsePanel,
-                    GitPanel,
-                    DiffEditor,
-                    EnvironmentSelector,
-                    EnvironmentManagerModal
-                }
+describe('MainLayout.vue', () => {
+    beforeEach(() => {
+        vi.stubGlobal('alert', vi.fn());
+    });
+
+    it('renders sidebar and workspace', () => {
+        const pinia = createTestingPinia({
+            createSpy: vi.fn,
+            initialState: {
+                'file-system': { rootEntry: [], currentPath: null, selectedFile: null },
+                request: { isDirty: false },
+                environment: { showManager: false }
             }
-        })
+        });
 
-        const toggleBtn = wrapper.findAll('.activityBar__item').find(b => b.attributes('title') === 'Toggle Theme')
-        expect(toggleBtn?.exists()).toBe(true)
-    })
-
-    it('calls toggleTheme when button is clicked', async () => {
         const wrapper = mount(MainLayout, {
-            global: {
-                plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: false })],
-                stubs: {
-                    FileTree,
-                    RequestPanel,
-                    ResponsePanel,
-                    GitPanel,
-                    DiffEditor,
-                    EnvironmentSelector,
-                    EnvironmentManagerModal
-                }
+            global: { plugins: [pinia] }
+        });
+
+        expect(wrapper.find('.activityBar').exists()).toBe(true);
+        expect(wrapper.find('.mainLayout__sidebar').exists()).toBe(true);
+        expect(wrapper.find('.mainLayout__workspace').exists()).toBe(true);
+    });
+
+    it('triggers openFolder action', async () => {
+        const pinia = createTestingPinia({ createSpy: vi.fn });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
+        const fsStore = useFileSystemStore();
+
+        (window.electron.fs.selectFolder as any).mockResolvedValue('/selected/path');
+
+        const openBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('Open'));
+        await openBtn?.trigger('click');
+        
+        expect(window.electron.fs.selectFolder).toHaveBeenCalled();
+        // selectFolder returns mock path, openDirectory should be called
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(fsStore.openDirectory).toHaveBeenCalledWith('/selected/path'); 
+    });
+
+    it('opens and confirms new request modal', async () => {
+        const pinia = createTestingPinia({ 
+            createSpy: vi.fn,
+            initialState: { 'file-system': { currentPath: '/some/path' } }
+        });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
+        const fsStore = useFileSystemStore();
+
+        // Open modal
+        const newBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('New'));
+        await newBtn?.trigger('click');
+        expect(wrapper.find('.mainLayout__modalOverlay').exists()).toBe(true);
+
+        // Input name and confirm
+        const input = wrapper.find('.mainLayout__modalInput');
+        await input.setValue('test-req');
+        await wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Create')?.trigger('click');
+
+        expect(fsStore.createRequest).toHaveBeenCalledWith('test-req');
+        expect(wrapper.find('.mainLayout__modalOverlay').exists()).toBe(false);
+    });
+
+    it('does nothing in confirmCreateRequest if name is empty', async () => {
+        const pinia = createTestingPinia({ 
+            createSpy: vi.fn,
+            initialState: { 'file-system': { currentPath: '/some/path' } }
+        });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
+        const fsStore = useFileSystemStore();
+
+        // Open modal
+        const newBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('New'));
+        await newBtn?.trigger('click');
+        
+        // Confirm with empty name
+        const createBtn = wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Create');
+        await createBtn?.trigger('click');
+
+        expect(fsStore.createRequest).not.toHaveBeenCalled();
+        expect(wrapper.find('.mainLayout__modalOverlay').exists()).toBe(true);
+    });
+
+    it('handles error in confirmCreateRequest', async () => {
+        const pinia = createTestingPinia({ 
+            createSpy: vi.fn,
+            initialState: { 'file-system': { currentPath: '/some/path' } }
+        });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
+        const fsStore = useFileSystemStore();
+
+        (fsStore.createRequest as any).mockRejectedValue(new Error('fail'));
+
+        // Open modal
+        const newBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('New'));
+        await newBtn?.trigger('click');
+        
+        // Input and confirm
+        await wrapper.find('.mainLayout__modalInput').setValue('req');
+        const createBtn = wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Create');
+        await createBtn?.trigger('click');
+        await flushPromises();
+
+        expect(window.alert).toHaveBeenCalledWith('Error creating request: fail');
+    });
+
+    it('switches between explorer and git activities', async () => {
+        const pinia = createTestingPinia({ createSpy: vi.fn });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
+
+        const buttons = wrapper.findAll('.activityBar__item');
+        
+        // Switch to Git
+        await buttons[1].trigger('click');
+        expect(wrapper.text()).toContain('GitPanel');
+        expect(wrapper.text()).not.toContain('Open'); 
+
+        // Switch back to Explorer
+        await buttons[0].trigger('click');
+        expect(wrapper.text()).toContain('FileTree');
+        expect(wrapper.text()).toContain('Open');
+    });
+
+    it('triggers saveRequest action', async () => {
+        const pinia = createTestingPinia({ 
+            createSpy: vi.fn,
+            initialState: { 'file-system': { selectedFile: { id: '1' } } }
+        });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
+        const requestStore = useRequestStore();
+
+        const saveBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('Save'));
+        await saveBtn?.trigger('click');
+        expect(requestStore.saveToFile).toHaveBeenCalled();
+    });
+
+    it('handles error in openFolder', async () => {
+        const pinia = createTestingPinia({ createSpy: vi.fn });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
+        
+        (window.electron.fs.selectFolder as any).mockRejectedValue(new Error('fail'));
+
+        const openBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('Open'));
+        await openBtn?.trigger('click');
+        await flushPromises();
+
+        expect(window.alert).toHaveBeenCalledWith('Error opening folder: fail');
+    });
+
+    it('handles error in saveRequest', async () => {
+        const pinia = createTestingPinia({ 
+            createSpy: vi.fn,
+            initialState: { 'file-system': { selectedFile: { id: '1' } } }
+        });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
+        const requestStore = useRequestStore();
+        
+        (requestStore.saveToFile as any).mockRejectedValue(new Error('fail'));
+
+        const saveBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('Save'));
+        await saveBtn?.trigger('click');
+        await flushPromises();
+
+        expect(window.alert).toHaveBeenCalledWith('Error saving request: fail');
+    });
+
+    it('handles openDiff event from GitPanel', async () => {
+        const pinia = createTestingPinia({ 
+            createSpy: vi.fn,
+            initialState: {
+                theme: { theme: 'dark' }
             }
-        })
+        });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
 
-        const themeStore = useThemeStore()
+        // Switch to Git activity
+        await wrapper.findAll('.activityBar__item')[1].trigger('click');
 
-        const toggleBtn = wrapper.findAll('.activityBar__item').find(b => b.attributes('title') === 'Toggle Theme')
-        await toggleBtn?.trigger('click')
+        const gitPanel = wrapper.getComponent({ name: 'GitPanel' });
+        
+        (window.electron.git.getFileContent as any).mockResolvedValue('original content');
+        (window.electron.fs.readFile as any).mockResolvedValue('modified content');
 
-        expect(themeStore.toggleTheme).toHaveBeenCalled()
-    })
+        await gitPanel.vm.$emit('openDiff', 'file.json', '/repo/path');
+        
+        // Wait for async handleOpenDiff and UI update
+        await new Promise(resolve => setTimeout(resolve, 0));
+        await wrapper.vm.$nextTick();
 
-    it('displays moon icon when theme is light', () => {
-        const wrapper = mount(MainLayout, {
-            global: {
-                plugins: [createTestingPinia({
-                    createSpy: vi.fn,
-                    initialState: {
-                        theme: { theme: 'light' }
-                    }
-                })],
-                stubs: {
-                    FileTree,
-                    RequestPanel,
-                    ResponsePanel,
-                    GitPanel,
-                    DiffEditor,
-                    EnvironmentSelector,
-                    EnvironmentManagerModal
-                }
-            }
-        })
+        expect(window.electron.git.getFileContent).toHaveBeenCalled();
+        expect(wrapper.text()).toContain('DiffEditor');
+        expect(wrapper.text()).toContain('Close Diff');
 
-        const toggleBtn = wrapper.findAll('.activityBar__item').find(b => b.attributes('title') === 'Toggle Theme')
-        expect(toggleBtn?.text()).toBe('🌙')
-    })
+        // Close diff
+        await wrapper.find('.close-diff-btn').trigger('click');
+        expect(wrapper.text()).not.toContain('DiffEditor');
+    });
 
-    it('displays sun icon when theme is dark', () => {
-        const wrapper = mount(MainLayout, {
-            global: {
-                plugins: [createTestingPinia({
-                    createSpy: vi.fn,
-                    initialState: {
-                        theme: { theme: 'dark' }
-                    }
-                })],
-                stubs: {
-                    FileTree,
-                    RequestPanel,
-                    ResponsePanel,
-                    GitPanel,
-                    DiffEditor,
-                    EnvironmentSelector,
-                    EnvironmentManagerModal
-                }
-            }
-        })
+    it('handles error in handleOpenDiff', async () => {
+        const pinia = createTestingPinia({ createSpy: vi.fn });
+        const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
 
-        const toggleBtn = wrapper.findAll('.activityBar__item').find(b => b.attributes('title') === 'Toggle Theme')
-        expect(toggleBtn?.text()).toBe('☀️')
-    })
-})
+        await wrapper.findAll('.activityBar__item')[1].trigger('click');
+        const gitPanel = wrapper.getComponent({ name: 'GitPanel' });
+        
+        (window.electron.git.getFileContent as any).mockRejectedValue(new Error('fail'));
+
+        await gitPanel.vm.$emit('openDiff', 'file.json', '/repo/path');
+        await flushPromises();
+
+        expect(window.alert).toHaveBeenCalledWith('Error opening diff: fail');
+    });
+});

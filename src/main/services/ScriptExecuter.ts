@@ -1,9 +1,9 @@
 import vm from 'vm';
 
-export interface ExecutionContext {
+export type ExecutionContext = {
     environment: Record<string, string>;
     response?: any; // Expecting Axios-like structure: { status, statusText, headers, data }
-}
+};
 
 export class ScriptExecuter {
     execute(scriptCode: string, context: ExecutionContext): ExecutionContext {
