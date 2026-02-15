@@ -21,3 +21,12 @@ El sistema debe reconocer y respetar la estructura de carpetas definida para el 
 #### Scenario: Organización de código
 - **WHEN** Se inspecciona el directorio `src`
 - **THEN** Deben existir subdirectorios claros para `main`, `preload`, `renderer` y `shared` (tipos compartidos).
+
+### Requirement: Definición de Tipos
+El código debe seguir convenciones estrictas de TypeScript para la definición de estructuras de datos.
+
+#### Scenario: Uso de Type vs Interface
+- **WHEN** Se define la forma de un objeto o estructura de datos.
+- **THEN** Se debe utilizar `type` y no `interface`.
+- **AND** `interface` se reserva exclusivamente para definir contratos de clases o implementación de métodos (similar a Java/C#).
+
