@@ -196,19 +196,19 @@ async function save() {
 }
 
 .envModal {
-    background: #252526;
+    background: var(--bg-modal);
     width: 800px;
     height: 600px;
     display: flex;
     flex-direction: column;
     border-radius: 8px;
-    border: 1px solid #444;
+    border: 1px solid var(--input-border);
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
 .envModal__header {
     padding: 16px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -216,13 +216,13 @@ async function save() {
 
 .envModal__header h3 {
     margin: 0;
-    color: #fff;
+    color: var(--text-primary);
 }
 
 .close-btn {
     background: none;
     border: none;
-    color: #ccc;
+    color: var(--text-secondary);
     font-size: 24px;
     cursor: pointer;
 }
@@ -236,8 +236,8 @@ async function save() {
 
 .envModal__sidebar {
     width: 200px;
-    background: #1e1e1e;
-    border-right: 1px solid #333;
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
 }
@@ -245,19 +245,19 @@ async function save() {
 .scope-item {
     padding: 12px 16px;
     cursor: pointer;
-    color: #ccc;
+    color: var(--text-secondary);
     font-size: 13px;
     border-left: 2px solid transparent;
 }
 
 .scope-item:hover {
-    background: #2a2a2a;
+    background: var(--bg-secondary);
 }
 
 .scope-item.active {
-    background: #252526;
-    border-left-color: #0e639c;
-    color: white;
+    background: var(--bg-modal);
+    border-left-color: var(--accent-color);
+    color: var(--text-primary);
     font-weight: 500;
 }
 
@@ -270,7 +270,7 @@ async function save() {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.env-badge.warning { color: #d97706; }
+.env-badge.warning { color: var(--accent-dirty); }
 
 .envModal__content {
     flex: 1;
@@ -283,7 +283,7 @@ async function save() {
 /* Footer */
 .envModal__footer {
     padding: 16px;
-    border-top: 1px solid #333;
+    border-top: 1px solid var(--border-color);
     display: flex;
     gap: 12px;
 }
@@ -294,13 +294,13 @@ async function save() {
 
 button {
     padding: 8px 16px;
-    background: #0e639c;
+    background: var(--accent-color);
     border: none;
-    color: white;
+    color: var(--text-inverse);
     border-radius: 4px;
     cursor: pointer;
 }
-button:hover { background: #1177bb; }
+button:hover { background: var(--accent-hover); }
 
 .no-env {
     display: flex;
@@ -308,7 +308,7 @@ button:hover { background: #1177bb; }
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #888;
+    color: var(--text-secondary);
     gap: 16px;
 }
 
@@ -320,28 +320,28 @@ button:hover { background: #1177bb; }
 }
 
 .env-info label {
-    color: #ccc;
+    color: var(--text-secondary);
     display: flex;
     gap: 8px;
     align-items: center;
 }
 .env-info input {
-    background: #333;
-    border: 1px solid #444;
-    color: white;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-primary);
     padding: 4px 8px;
     border-radius: 4px;
 }
 
 .path {
-    color: #888;
+    color: var(--text-secondary);
     font-size: 12px;
     font-family: monospace;
 }
 
 .unsaved-badge {
-    background: #d97706;
-    color: white;
+    background: var(--accent-dirty);
+    color: var(--text-inverse);
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 10px;
@@ -351,18 +351,18 @@ button:hover { background: #1177bb; }
 .vars-table {
     display: flex;
     flex-direction: column;
-    border: 1px solid #333;
+    border: 1px solid var(--border-color);
 }
 
 .vars-header, .vars-row {
     display: grid;
     grid-template-columns: 40px 1fr 1fr 100px 40px;
     gap: 1px;
-    background: #333; /* Gap color */
+    background: var(--border-color); /* Gap color */
 }
 
 .vars-header > div, .vars-row > div {
-    background: #1e1e1e;
+    background: var(--bg-modal);
     padding: 8px;
     display: flex;
     align-items: center;
@@ -370,7 +370,7 @@ button:hover { background: #1177bb; }
 
 .vars-header > div {
     font-weight: bold;
-    color: #ccc;
+    color: var(--text-secondary);
     font-size: 12px;
 }
 
@@ -380,10 +380,14 @@ input[type="text"], input[type="password"], select {
     width: 100%;
     background: transparent;
     border: none;
-    color: white;
+    color: var(--text-primary);
     font-family: inherit;
 }
-input:focus, select:focus { outline: 1px solid #0e639c; }
+input:focus, select:focus { outline: 1px solid var(--accent-color); }
+select option {
+    background-color: var(--bg-modal);
+    color: var(--text-primary);
+}
 
 .new-row input {
     font-style: italic;
@@ -391,9 +395,9 @@ input:focus, select:focus { outline: 1px solid #0e639c; }
 
 .vars-row .col-actions button {
     background: none;
-    color: #888;
+    color: var(--text-secondary);
     padding: 0;
     font-size: 18px;
 }
-.vars-row .col-actions button:hover { color: #d32f2f; }
+.vars-row .col-actions button:hover { color: var(--error-color); }
 </style>

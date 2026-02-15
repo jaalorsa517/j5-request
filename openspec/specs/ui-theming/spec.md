@@ -25,3 +25,9 @@ La aplicación debe permitir cambiar entre temas claro y oscuro, respetando la p
 - **WHEN** Se aplica el tema Claro.
 - **THEN** Elementos como pestañas (`RequestTabBar`), paneles (`RequestPanel`, `ResponsePanel`) y editores deben tener fondo claro y texto oscuro con contraste suficiente.
 - **AND** Ningún texto debe ser invisible (blanco sobre blanco o negro sobre negro).
+
+#### Scenario: Visualización de Modales
+- **WHEN** Se muestra un diálogo modal (ej. "New Request", "Environment Manager").
+- **THEN** El fondo del diálogo debe tener el color correspondiente al tema actual (oscuro o claro).
+- **AND** El texto dentro del diálogo debe ser legible con contraste adecuado.
+- **AND** Los campos de entrada (inputs) deben respetar el tema en curso.
