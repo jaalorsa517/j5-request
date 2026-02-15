@@ -42,12 +42,12 @@ function handleNewTab() {
 .requestTabBar {
     display: flex;
     flex-direction: row;
-    background-color: #252526;
+    background-color: var(--bg-secondary);
     height: 35px;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
-    border-bottom: 1px solid #1e1e1e; /* Separator if needed */
+    border-bottom: 1px solid var(--border-color);
 }
 
 .requestTabBar::-webkit-scrollbar {
@@ -55,7 +55,7 @@ function handleNewTab() {
 }
 
 .requestTabBar::-webkit-scrollbar-thumb {
-    background-color: #424242;
+    background-color: var(--border-color);
 }
 
 .requestTabBar__tab {
@@ -64,9 +64,9 @@ function handleNewTab() {
     padding: 0 10px;
     min-width: 120px;
     max-width: 200px;
-    background-color: #2d2d2d;
-    color: #969696;
-    border-right: 1px solid #1e1e1e;
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border-color);
     cursor: pointer;
     user-select: none;
     font-size: 13px;
@@ -74,13 +74,13 @@ function handleNewTab() {
 }
 
 .requestTabBar__tab:hover {
-    background-color: #333333;
+    background-color: var(--bg-secondary);
 }
 
 .requestTabBar__tab--active {
-    background-color: #1e1e1e;
-    color: #ffffff;
-    border-top: 1px solid #0e639c; /* Active indicator on top usually in VS Code styles */
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border-top: 1px solid var(--accent-color);
 }
 
 .requestTabBar__label {
@@ -96,10 +96,12 @@ function handleNewTab() {
 .method-badge {
     font-size: 0.7em;
     font-weight: bold;
-    color: #ccc;
+    color: var(--text-secondary);
+    opacity: 0.8;
     min-width: 24px;
 }
 
+/* Method colors might need to be variables too for full theming support, keeping hardcoded for now as they are usually consistent */
 .method-badge.get { color: #6aca4b; }
 .method-badge.post { color: #f9c74f; }
 .method-badge.put { color: #4facfe; }
@@ -108,14 +110,14 @@ function handleNewTab() {
 
 .dirty-marker {
     font-size: 0.8em;
-    color: #ffffff;
+    color: var(--text-primary);
     margin-left: 4px;
 }
 
 .requestTabBar__close {
     background: none;
     border: none;
-    color: #cccccc;
+    color: var(--text-secondary);
     font-size: 16px;
     margin-left: 6px;
     cursor: pointer;
@@ -125,7 +127,7 @@ function handleNewTab() {
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0; /* Hide by default unless hovered or active? VS Code shows on hover or active */
+    opacity: 0;
     transition: opacity 0.2s, background-color 0.2s;
 }
 
@@ -135,14 +137,14 @@ function handleNewTab() {
 }
 
 .requestTabBar__close:hover {
-    background-color: #444;
-    color: #fff;
+    background-color: var(--border-color);
+    color: var(--text-primary);
 }
 
 .requestTabBar__new {
     background: none;
     border: none;
-    color: #cccccc;
+    color: var(--text-secondary);
     font-size: 18px;
     padding: 0 10px;
     cursor: pointer;
@@ -152,6 +154,6 @@ function handleNewTab() {
 }
 
 .requestTabBar__new:hover {
-    background-color: #333;
+    background-color: var(--bg-tertiary);
 }
 </style>

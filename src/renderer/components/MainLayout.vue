@@ -131,7 +131,7 @@ function closeDiff() {
             </button>
             <div style="flex: 1;"></div>
             <button
-                class="activityBar__item"
+                class="activityBar__item theme-toggle"
                 @click="themeStore.toggleTheme()"
                 title="Toggle Theme"
             >
@@ -441,5 +441,10 @@ function closeDiff() {
 }
 .close-diff-btn:hover {
     background: var(--bg-tertiary);
+}
+
+.theme-toggle {
+    margin-bottom: 10px;
+    font-size: 1.2em;
 }
 </style>
