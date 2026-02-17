@@ -21,7 +21,7 @@ rules:
 
   tasks:
     - Idioma: Español
-    - Agregar una tarea de crNo usareación de unit test con la cobertura al 100%.
+    - Agregar tareas de creación de unit test con la cobertura al 100%.
 
   specs:
     - Idioma: Español

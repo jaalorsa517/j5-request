@@ -179,6 +179,15 @@ export const useRequestStore = defineStore('request', () => {
         tabs.value.splice(index, 1);
     }
 
+    function closeTabByPath(path: string) {
+        const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
+        const tabsToClose = tabs.value.filter(t =>
+            t.filePath && (t.filePath === path || t.filePath.startsWith(path + separator))
+        );
+
+        tabsToClose.forEach(t => closeTab(t.id));
+    }
+
     function setActiveTab(tabId: string) {
         const tab = tabs.value.find(t => t.id === tabId);
         if (tab) {
@@ -330,7 +339,9 @@ export const useRequestStore = defineStore('request', () => {
         // Si usamos targetPath directo, saltamos fsStore.saveRequest que usa selectedFile + selectedFilePath
         // Pero queremos mantener fsStore updated si coincide
 
-        await window.electron.fs.writeFile(targetPath, request);
+        // Clonar para eliminar Proxies de Vue que causan error "Object could not be cloned" en IPC
+        const requestClone = JSON.parse(JSON.stringify(request));
+        await window.electron.fs.writeFile(targetPath, requestClone);
 
         // Actualizar estado original después de guardar
         tab.originalState = snapshotRequest(reqState);
@@ -464,6 +475,7 @@ export const useRequestStore = defineStore('request', () => {
         // Acciones
         addTab,
         closeTab,
+        closeTabByPath,
         setActiveTab,
         loadFromFile,
         saveToFile,

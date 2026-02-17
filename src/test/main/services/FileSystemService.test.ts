@@ -91,9 +91,12 @@ describe('FileSystemService', () => {
         });
 
         it('should handle errors gracefully', async () => {
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
             (fs.readdir as any).mockRejectedValue(new Error('Access denied'));
             const result = await fileSystemService.readDirRecursive('/error/path');
             expect(result).toEqual([]);
+            expect(consoleSpy).toHaveBeenCalled();
+            consoleSpy.mockRestore();
         });
 
         it('should return empty array for null root', async () => {
@@ -219,6 +222,59 @@ describe('FileSystemService', () => {
 
         it('should do nothing if no watcher exists', () => {
             expect(() => fileSystemService.stopWatch()).not.toThrow();
+        });
+    });
+    describe('saveImportedRequests', () => {
+        it('should save requests with generated filenames', async () => {
+            const requests = [
+                { name: 'Get Users', method: 'GET', url: 'http://api.com/users' },
+                { name: 'Create User', method: 'POST', url: 'http://api.com/users' }
+            ];
+            const targetDir = '/tmp/requests';
+
+            // Mock ensure dir exists
+            (fs.mkdir as any).mockResolvedValue(undefined);
+            // Mock un file exist check que retorna false (no existe) -> access lanza error
+            (fs.access as any).mockRejectedValue(new Error('File not found'));
+
+            const savedPaths = await fileSystemService.saveImportedRequests(requests, targetDir);
+
+            expect(fs.mkdir).toHaveBeenCalledWith(targetDir, { recursive: true });
+            // fs.writeFile is called inside this.writeFile
+            expect(fs.writeFile).toHaveBeenCalledTimes(2);
+
+            // Verificar nombres de archivos generados
+            // GET-Get-Users.j5request
+            const expectedPath1 = path.join(targetDir, 'GET-Get-Users.j5request');
+            expect(fs.writeFile).toHaveBeenCalledWith(expectedPath1, expect.any(String), 'utf-8');
+
+            expect(savedPaths).toHaveLength(2);
+            expect(savedPaths[0]).toBe(expectedPath1);
+        });
+
+        it('should handle duplicate filenames by appending counter', async () => {
+            const requests = [
+                { name: 'Test', method: 'GET' }
+            ];
+            const targetDir = '/tmp/requests';
+
+            const duplicateFilename = 'GET-Test-1.j5request';
+
+            // Mock access: 
+            // Primera llamada (GET-Test.j5request) -> Resuelve (Existe)
+            // Segunda llamada (GET-Test-1.j5request) -> Rechaza (No existe)
+            (fs.access as any)
+                .mockResolvedValueOnce(undefined) // Existe el primero
+                .mockRejectedValueOnce(new Error('File not found')); // No existe el segundo
+
+            const savedPaths = await fileSystemService.saveImportedRequests(requests, targetDir);
+
+            expect(fs.writeFile).toHaveBeenCalledWith(
+                path.join(targetDir, duplicateFilename),
+                expect.any(String),
+                'utf-8'
+            );
+            expect(savedPaths[0]).toBe(path.join(targetDir, duplicateFilename));
         });
     });
 });

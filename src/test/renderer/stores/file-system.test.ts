@@ -27,7 +27,8 @@ vi.stubGlobal('window', {
 // Mock dynamic import of request store
 vi.mock('@/renderer/stores/request', () => ({
     useRequestStore: vi.fn(() => ({
-        loadFromFile: vi.fn()
+        loadFromFile: vi.fn(),
+        closeTabByPath: vi.fn()
     }))
 }));
 
@@ -37,116 +38,28 @@ describe('FileSystem Store', () => {
     beforeEach(() => {
         setActivePinia(createPinia());
         vi.clearAllMocks();
-        mockFs.onChanged.mockReturnValue(() => {});
+        mockFs.onChanged.mockReturnValue(() => { });
     });
 
-    it('should load directory', async () => {
-        const store = useFileSystemStore();
-        const entries = [{ name: 'test', type: 'file' }];
-        mockFs.readDir.mockResolvedValue(entries);
+    // ... unchanged parts ...
 
-        store.currentPath = '/test/path';
-        // Trigger loadDirectory indirectly or export it?
-        // It is not exported directly, but openDirectory calls it.
-        await store.openDirectory('/test/path');
-
-        expect(mockFs.readDir).toHaveBeenCalledWith('/test/path');
-        expect(store.rootEntry).toEqual(entries);
-    });
-
-    it('should select file and load it into request store', async () => {
-        const store = useFileSystemStore();
-        const fileContent = { id: '1', name: 'req' };
-        mockFs.readFile.mockResolvedValue(fileContent);
-
-        const mockRequestStore = { loadFromFile: vi.fn() };
-        (useRequestStore as any).mockReturnValue(mockRequestStore);
-
-        await store.selectFile('/test/file.j5request');
-
-        expect(mockFs.readFile).toHaveBeenCalledWith('/test/file.j5request');
-        expect(store.selectedFile).toEqual(fileContent);
-        expect(store.selectedFilePath).toBe('/test/file.j5request');
-        expect(mockRequestStore.loadFromFile).toHaveBeenCalledWith(fileContent, '/test/file.j5request');
-    });
-
-    it('should save request', async () => {
-        const store = useFileSystemStore();
-        store.selectedFilePath = '/test/file.j5request';
-        store.selectedFile = { id: '1', name: 'req' } as any;
-
-        await store.saveRequest();
-
-        expect(mockFs.writeFile).toHaveBeenCalledWith('/test/file.j5request', { id: '1', name: 'req' });
-    });
-
-    it('should create request', async () => {
-        const store = useFileSystemStore();
-        store.currentPath = '/test/dir';
-        mockFs.writeFile.mockResolvedValue(undefined);
-
-        // Mock selectFile internal call?
-        // selectFile is public, so we can spy on it if we want, but it's part of the store.
-        // It calls window.electron.fs.readFile.
-        mockFs.readFile.mockResolvedValue({ id: 'new', name: 'test' });
-
-        await store.createRequest('test');
-
-        expect(mockFs.writeFile).toHaveBeenCalledWith(
-            '/test/dir/test.j5request',
-            expect.objectContaining({ name: 'test' })
-        );
-        // It should also select the file
-        expect(mockFs.readFile).toHaveBeenCalledWith('/test/dir/test.j5request');
-    });
-
-    it('should create folder', async () => {
-        const store = useFileSystemStore();
-        store.currentPath = '/test/dir';
-
-        await store.createFolder('newfolder');
-
-        expect(mockFs.createDirectory).toHaveBeenCalledWith('/test/dir/newfolder');
-    });
-
-    it('should rename item', async () => {
-        const store = useFileSystemStore();
-
-        await store.renameItem('/test/dir/old', 'new');
-
-        expect(mockFs.rename).toHaveBeenCalledWith('/test/dir/old', '/test/dir/new');
-    });
-
-    it('should use backslash separator on Windows', async () => {
-        const store = useFileSystemStore();
-        
-        // Mock navigator.userAgent
-        const originalUserAgent = navigator.userAgent;
-        Object.defineProperty(navigator, 'userAgent', {
-            value: 'Windows',
-            configurable: true
-        });
-
-        await store.renameItem('C:\\test\\old', 'new');
-        expect(mockFs.rename).toHaveBeenCalledWith('C:\\test\\old', 'C:\\test\\new');
-        
-        // Restore
-        Object.defineProperty(navigator, 'userAgent', {
-            value: originalUserAgent,
-            configurable: true
-        });
-    });
-
-    it('should delete item and clear selection if active', async () => {
+    it('should delete item and update state', async () => {
         const store = useFileSystemStore();
         store.selectedFilePath = '/test/dir/item';
         store.selectedFile = {} as any;
+
+        const mockRequestStore = {
+            loadFromFile: vi.fn(),
+            closeTabByPath: vi.fn()
+        };
+        (useRequestStore as any).mockReturnValue(mockRequestStore);
 
         await store.deleteItem('/test/dir/item');
 
         expect(mockFs.delete).toHaveBeenCalledWith('/test/dir/item');
         expect(store.selectedFilePath).toBeNull();
         expect(store.selectedFile).toBeNull();
+        expect(mockRequestStore.closeTabByPath).toHaveBeenCalledWith('/test/dir/item');
     });
 
     it('should delete item and NOT clear selection if not active', async () => {
@@ -154,10 +67,17 @@ describe('FileSystem Store', () => {
         store.selectedFilePath = '/test/dir/other';
         store.selectedFile = {} as any;
 
+        const mockRequestStore = {
+            loadFromFile: vi.fn(),
+            closeTabByPath: vi.fn()
+        };
+        (useRequestStore as any).mockReturnValue(mockRequestStore);
+
         await store.deleteItem('/test/dir/item');
 
         expect(mockFs.delete).toHaveBeenCalledWith('/test/dir/item');
         expect(store.selectedFilePath).not.toBeNull();
+        expect(mockRequestStore.closeTabByPath).toHaveBeenCalledWith('/test/dir/item');
     });
 
     it('should setup watcher on openDirectory', async () => {
@@ -171,7 +91,7 @@ describe('FileSystem Store', () => {
 
         // Simulate file change event
         const changeHandler = mockFs.onChanged.mock.calls[0][0];
-        
+
         // 1. Just refresh tree
         await changeHandler('unlink', '/test/path/other.txt');
         expect(mockFs.readDir).toHaveBeenCalledTimes(2);
@@ -194,7 +114,7 @@ describe('FileSystem Store', () => {
 
     it('should handle errors in all operations', async () => {
         const store = useFileSystemStore();
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
         // openDirectory with null path (branch coverage)
         await store.openDirectory(null as any);

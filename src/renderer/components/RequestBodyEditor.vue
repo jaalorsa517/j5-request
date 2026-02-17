@@ -64,8 +64,8 @@ const editorLanguage = computed(() => {
 
 .requestBodyEditor__toolbar {
     padding: 8px 12px;
-    background-color: #1e1e1e;
-    border-bottom: 1px solid #333;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     gap: 16px;
     align-items: center;
@@ -75,7 +75,7 @@ const editorLanguage = computed(() => {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: #ccc;
+    color: var(--text-secondary);
     font-size: 13px;
     cursor: pointer;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -96,7 +96,7 @@ const editorLanguage = computed(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    color: #666;
+    color: var(--text-secondary);
     font-size: 14px;
     font-style: italic;
 }

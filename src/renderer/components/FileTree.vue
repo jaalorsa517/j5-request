@@ -7,7 +7,15 @@ defineProps<{
   depth?: number;
 }>();
 
+const emit = defineEmits<{
+  (e: 'node-contextmenu', event: MouseEvent, entry: J5FileEntry): void;
+}>();
+
 const store = useFileSystemStore();
+
+function onRightClick(event: MouseEvent, entry: J5FileEntry) {
+    emit('node-contextmenu', event, entry);
+}
 </script>
 
 <template>
@@ -17,6 +25,7 @@ const store = useFileSystemStore();
         class="file-entry" 
         :class="{ 'file-entry--selected': store.selectedFilePath === entry.path }"
         @click.stop="entry.type === 'file' ? store.selectFile(entry.path) : null"
+        @contextmenu.prevent="onRightClick($event, entry)"
       >
         <span class="icon">{{ entry.type === 'directory' ? '📁' : '📄' }}</span>
         <span class="name">{{ entry.name }}</span>
@@ -26,6 +35,7 @@ const store = useFileSystemStore();
         v-if="entry.type === 'directory' && entry.children && entry.children.length > 0" 
         :entries="entry.children" 
         :depth="(depth || 0) + 1"
+        @node-contextmenu="(e, entry) => emit('node-contextmenu', e, entry)"
       />
     </li>
   </ul>

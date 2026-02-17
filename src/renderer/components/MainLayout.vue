@@ -6,6 +6,11 @@ import GitPanel from '@/renderer/components/git/GitPanel.vue';
 import DiffEditor from '@/renderer/components/git/DiffEditor.vue';
 import EnvironmentSelector from '@/renderer/components/EnvironmentSelector.vue';
 import EnvironmentManagerModal from '@/renderer/components/EnvironmentManagerModal.vue';
+import ImportModal from '@/renderer/components/ImportModal.vue';
+import ContextMenu, { MenuItem } from '@/renderer/components/ContextMenu.vue';
+import ConfirmModal from '@/renderer/components/ConfirmModal.vue';
+import ExportDialog from '@/renderer/components/ExportDialog.vue';
+import { J5FileEntry, J5Request } from '@/shared/types';
 import RequestTabBar from '@/renderer/components/RequestTabBar.vue';
 import { useFileSystemStore } from '@/renderer/stores/file-system';
 import { useRequestStore } from '@/renderer/stores/request';
@@ -19,6 +24,25 @@ const envStore = useEnvironmentStore();
 const themeStore = useThemeStore();
 const showNewRequestModal = ref(false);
 const newRequestName = ref('');
+const showImportModal = ref(false);
+
+// Context Menu State
+const showContextMenu = ref(false);
+const contextMenuX = ref(0);
+const contextMenuY = ref(0);
+const contextMenuTarget = ref<J5FileEntry | null>(null);
+const contextMenuItems = ref<MenuItem[]>([
+    { label: 'Eliminar', action: 'delete', danger: true }
+]);
+
+// Delete Modal State
+const showDeleteConfirm = ref(false);
+const itemToDelete = ref<J5FileEntry | null>(null);
+
+// Export Dialog State
+const showExportDialog = ref(false);
+const exportSingleRequest = ref<Partial<J5Request> | undefined>(undefined);
+const exportCollectionRequests = ref<J5Request[] | undefined>(undefined);
 
 // Navigation state
 const activeActivity = ref<'explorer' | 'git'>('explorer');
@@ -107,6 +131,77 @@ async function handleOpenDiff(file: string, repoPath: string) {
 function closeDiff() {
     showDiff.value = false;
 }
+
+function openImportModal() {
+    showImportModal.value = true;
+}
+
+function handleImported(count: number) {
+    // TODO: Refresh file tree aquí cuando se implementen las secciones 4
+    console.log(`Imported ${count} requests successfully`);
+    // Potencialmente: await store.refreshDirectory();
+}
+
+function handleNodeContextMenu(event: MouseEvent, entry: J5FileEntry) {
+    contextMenuTarget.value = entry;
+    contextMenuX.value = event.clientX;
+    contextMenuY.value = event.clientY;
+    
+    // Update context menu items based on entry type
+    contextMenuItems.value = [
+        { label: 'Exportar...', action: 'export' },
+        { label: 'Eliminar', action: 'delete', danger: true }
+    ];
+    
+    showContextMenu.value = true;
+}
+
+async function handleContextMenuAction(item: MenuItem) {
+    showContextMenu.value = false;
+    if (item.action === 'delete' && contextMenuTarget.value) {
+        itemToDelete.value = contextMenuTarget.value;
+        showDeleteConfirm.value = true;
+    } else if (item.action === 'export' && contextMenuTarget.value) {
+        const target = contextMenuTarget.value;
+        if (target.type === 'directory') {
+            try {
+                // Show loading indicator?
+                const reqs = await window.electron.fs.readAllRequests(target.path);
+                if (!reqs || reqs.length === 0) {
+                    alert('No se encontraron peticiones en la carpeta seleccionada.');
+                    return;
+                }
+                exportCollectionRequests.value = reqs;
+                exportSingleRequest.value = undefined;
+                showExportDialog.value = true;
+            } catch (e: any) {
+                alert('Error al leer la carpeta: ' + e.message);
+            }
+        } else {
+             // Single file
+             try {
+                 const req = await window.electron.fs.readFile(target.path);
+                 exportSingleRequest.value = req;
+                 exportCollectionRequests.value = undefined;
+                 showExportDialog.value = true;
+             } catch (e: any) {
+                 alert('Error al leer el archivo: ' + e.message);
+             }
+        }
+    }
+}
+
+async function confirmDelete() {
+    if (itemToDelete.value) {
+        try {
+            await store.deleteItem(itemToDelete.value.path);
+            itemToDelete.value = null;
+            showDeleteConfirm.value = false;
+        } catch (e: any) {
+             alert('Error deleting item: ' + e.message);
+        }
+    }
+}
 </script>
 
 <template>
@@ -131,7 +226,7 @@ function closeDiff() {
             </button>
             <div style="flex: 1;"></div>
             <button
-                class="activityBar__item"
+                class="activityBar__item theme-toggle"
                 @click="themeStore.toggleTheme()"
                 title="Toggle Theme"
             >
@@ -163,10 +258,16 @@ function closeDiff() {
                 >
                     {{ requestStore.isDirty ? '● ' : '' }}💾 Save
                 </button>
+                <button
+                    class="mainLayout__actionButton"
+                    @click="openImportModal"
+                >
+                    📥 Import
+                </button>
             </div>
             
             <div class="mainLayout__sidebarContent">
-                <FileTree v-if="activeActivity === 'explorer'" :entries="store.rootEntry" />
+                <FileTree v-if="activeActivity === 'explorer'" :entries="store.rootEntry" @node-contextmenu="handleNodeContextMenu" />
                 <GitPanel v-else-if="activeActivity === 'git'" @openDiff="handleOpenDiff" />
             </div>
         </aside>
@@ -215,6 +316,37 @@ function closeDiff() {
         </div>
         
         <EnvironmentManagerModal v-if="envStore.showManager" />
+        <ImportModal 
+            v-if="showImportModal" 
+            @close="showImportModal = false"
+            @imported="handleImported"
+        />
+
+        <ContextMenu 
+            v-if="showContextMenu"
+            :x="contextMenuX"
+            :y="contextMenuY"
+            :items="contextMenuItems"
+            @action="handleContextMenuAction"
+            @close="showContextMenu = false"
+        />
+
+        <ConfirmModal
+            :is-open="showDeleteConfirm"
+            :title="itemToDelete?.type === 'directory' ? 'Eliminar Carpeta' : 'Eliminar Archivo'"
+            :message="`¿Estás seguro de que deseas eliminar permanentemente '${itemToDelete?.name}'? Esta acción no se puede deshacer.`"
+            confirm-text="Eliminar"
+            :danger="true"
+            @confirm="confirmDelete"
+            @cancel="showDeleteConfirm = false"
+        />
+
+        <ExportDialog
+            :is-open="showExportDialog"
+            :request="exportSingleRequest"
+            :requests="exportCollectionRequests"
+            @close="showExportDialog = false"
+        />
     </div>
 </template>
 
@@ -441,5 +573,10 @@ function closeDiff() {
 }
 .close-diff-btn:hover {
     background: var(--bg-tertiary);
+}
+
+.theme-toggle {
+    margin-bottom: 10px;
+    font-size: 1.2em;
 }
 </style>

@@ -3,12 +3,61 @@ import path from 'path';
 import { FileSystemService } from '@/main/services/FileSystemService';
 import { gitService } from '@/main/services/GitService';
 import { RequestExecutor } from '@/main/services/RequestExecutor';
+import { importService } from '@/main/services/ImportService';
+
+import { ExportService } from '@/main/services/ExportService';
 
 const fsService = new FileSystemService();
 const requestExecutor = new RequestExecutor();
+const exportService = new ExportService();
 
 export function setupIpc(mainWindow: BrowserWindow) {
+    // ... existing handlers ...
 
+    // Export Handlers
+    ipcMain.handle('export:clipboard', async (_, content: string) => {
+        return exportService.exportToClipboard(content);
+    });
+
+    ipcMain.handle('export:file', async (_, content: string, defaultPath?: string) => {
+        const { dialog } = await import('electron');
+        const result = await dialog.showSaveDialog(mainWindow, {
+            defaultPath: defaultPath
+        });
+
+        if (result.canceled || !result.filePath) {
+            return null;
+        }
+
+        await exportService.exportToFile(content, result.filePath);
+        return result.filePath;
+    });
+
+    ipcMain.handle('export:generate', async (_, request: any, format: string) => {
+        // Handle single request vs array - for now assuming single request passed from UI
+        // If request is not array, wrap it for collection formats
+        const requests = Array.isArray(request) ? request : [request];
+        const singleRequest = Array.isArray(request) ? request[0] : request;
+
+        switch (format) {
+            // Text formats (Single Request)
+            case 'curl': return exportService.generateCurl(singleRequest);
+            case 'fetch': return exportService.generateFetch(singleRequest);
+            case 'powershell': return exportService.generatePowerShell(singleRequest);
+
+            // Collection formats (Array)
+            case 'postman': return JSON.stringify(exportService.generatePostmanCollection(requests), null, 2);
+            case 'insomnia': return JSON.stringify(exportService.generateInsomniaCollection(requests), null, 2);
+            case 'openapi':
+                return JSON.stringify(exportService.generateOpenAPI(requests, {
+                    title: 'J5 Request Export',
+                    version: '1.0.0',
+                    description: 'Exported from J5 Request'
+                }), null, 2);
+
+            default: throw new Error(`Unknown format: ${format}`);
+        }
+    });
 
     ipcMain.handle('app:get-user-data-path', () => {
         return app.getPath('userData');
@@ -25,6 +74,10 @@ export function setupIpc(mainWindow: BrowserWindow) {
         return fsService.readFile(path);
     });
 
+    ipcMain.handle('fs:read-text-file', async (_, path: string) => {
+        return fsService.readTextFile(path);
+    });
+
     ipcMain.handle('fs:write-file', async (_, path: string, content: any) => {
         return fsService.writeFile(path, content);
     });
@@ -39,6 +92,14 @@ export function setupIpc(mainWindow: BrowserWindow) {
 
     ipcMain.handle('fs:delete', async (_, path: string) => {
         return fsService.deletePath(path);
+    });
+
+    ipcMain.handle('fs:save-requests', async (_, requests: any[], targetDir: string) => {
+        return fsService.saveImportedRequests(requests, targetDir);
+    });
+
+    ipcMain.handle('fs:read-all-requests', async (_, path: string) => {
+        return fsService.readAllRequests(path);
     });
 
     ipcMain.handle('fs:select-folder', async () => {
@@ -135,5 +196,12 @@ export function setupIpc(mainWindow: BrowserWindow) {
         return requestExecutor.executeRequest(request, environment);
     });
 
+    // Import Handlers
+    ipcMain.handle('import:from-content', async (_, content: string, options?: any) => {
+        return importService.importFromContent(content, options);
+    });
 
+    ipcMain.handle('import:detect-format', async (_, content: string) => {
+        return importService.detectFormat(content);
+    });
 }
