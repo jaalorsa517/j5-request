@@ -53,6 +53,10 @@ export class FileSystemService {
         return parseJson<any>(content);
     }
 
+    async readTextFile(filePath: string): Promise<string> {
+        return await fs.readFile(filePath, 'utf-8');
+    }
+
     /**
      * Writes a request to disk.
      * RNF-01: Uses serializeJson for deterministic sorting.
@@ -62,6 +66,53 @@ export class FileSystemService {
         const dir = path.dirname(filePath);
         await fs.mkdir(dir, { recursive: true });
         await fs.writeFile(filePath, stringContent, 'utf-8');
+    }
+
+    /**
+     * Saves multiple imported requests to disk.
+     * Generates safe filenames based on request name/method.
+     */
+    async saveImportedRequests(requests: any[], targetDir: string): Promise<string[]> {
+        const savedPaths: string[] = [];
+        // Ensure directory exists
+        try {
+            await fs.mkdir(targetDir, { recursive: true });
+        } catch (error: any) {
+            if (error.code !== 'EEXIST') throw error;
+        }
+
+        for (const req of requests) {
+            // Generate safe filename. 
+            // e.g. "GET Create User" -> "GET-Create-User.j5request"
+            const safeName = (req.name || 'Request')
+                .replace(/[^a-z0-9]/gi, '-') // Replace non-alphanumeric with dash
+                .replace(/-+/g, '-') // Colapse dashes
+                .replace(/^-|-$/g, ''); // Trim dashes
+
+            let filename = `${req.method || 'GET'}-${safeName}.j5request`;
+            let filePath = path.join(targetDir, filename);
+
+            // Handle duplicates
+            let counter = 1;
+            while (await this.fileExists(filePath)) {
+                filename = `${req.method || 'GET'}-${safeName}-${counter}.j5request`;
+                filePath = path.join(targetDir, filename);
+                counter++;
+            }
+
+            await this.writeFile(filePath, req);
+            savedPaths.push(filePath);
+        }
+        return savedPaths;
+    }
+
+    private async fileExists(path: string): Promise<boolean> {
+        try {
+            await fs.access(path);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     async createDirectory(dirPath: string): Promise<void> {

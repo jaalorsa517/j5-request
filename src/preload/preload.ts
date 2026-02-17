@@ -25,10 +25,12 @@ contextBridge.exposeInMainWorld('electron', {
   fs: {
     readDir: (path: string) => ipcRenderer.invoke('fs:read-dir', path),
     readFile: (path: string) => ipcRenderer.invoke('fs:read-file', path),
+    readTextFile: (path: string) => ipcRenderer.invoke('fs:read-text-file', path),
     writeFile: (path: string, content: any) => ipcRenderer.invoke('fs:write-file', path, content),
     createDirectory: (path: string) => ipcRenderer.invoke('fs:create-dir', path),
     rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
     delete: (path: string) => ipcRenderer.invoke('fs:delete', path),
+    saveRequests: (requests: any[], targetDir: string) => ipcRenderer.invoke('fs:save-requests', requests, targetDir),
     selectFolder: () => ipcRenderer.invoke('fs:select-folder'),
     selectFile: () => ipcRenderer.invoke('fs:select-file'),
     saveFileDialog: (defaultName?: string) => ipcRenderer.invoke('fs:save-file-dialog', defaultName),
@@ -55,5 +57,9 @@ contextBridge.exposeInMainWorld('electron', {
   },
   request: {
     execute: (request: any, environment: any) => ipcRenderer.invoke('request:execute', request, environment)
+  },
+  import: {
+    fromContent: (content: string, options?: any) => ipcRenderer.invoke('import:from-content', content, options),
+    detectFormat: (content: string) => ipcRenderer.invoke('import:detect-format', content),
   }
 })

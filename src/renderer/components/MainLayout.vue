@@ -6,6 +6,7 @@ import GitPanel from '@/renderer/components/git/GitPanel.vue';
 import DiffEditor from '@/renderer/components/git/DiffEditor.vue';
 import EnvironmentSelector from '@/renderer/components/EnvironmentSelector.vue';
 import EnvironmentManagerModal from '@/renderer/components/EnvironmentManagerModal.vue';
+import ImportModal from '@/renderer/components/ImportModal.vue';
 import RequestTabBar from '@/renderer/components/RequestTabBar.vue';
 import { useFileSystemStore } from '@/renderer/stores/file-system';
 import { useRequestStore } from '@/renderer/stores/request';
@@ -19,6 +20,7 @@ const envStore = useEnvironmentStore();
 const themeStore = useThemeStore();
 const showNewRequestModal = ref(false);
 const newRequestName = ref('');
+const showImportModal = ref(false);
 
 // Navigation state
 const activeActivity = ref<'explorer' | 'git'>('explorer');
@@ -107,6 +109,16 @@ async function handleOpenDiff(file: string, repoPath: string) {
 function closeDiff() {
     showDiff.value = false;
 }
+
+function openImportModal() {
+    showImportModal.value = true;
+}
+
+function handleImported(count: number) {
+    // TODO: Refresh file tree aquí cuando se implementen las secciones 4
+    console.log(`Imported ${count} requests successfully`);
+    // Potencialmente: await store.refreshDirectory();
+}
 </script>
 
 <template>
@@ -163,6 +175,12 @@ function closeDiff() {
                 >
                     {{ requestStore.isDirty ? '● ' : '' }}💾 Save
                 </button>
+                <button
+                    class="mainLayout__actionButton"
+                    @click="openImportModal"
+                >
+                    📥 Import
+                </button>
             </div>
             
             <div class="mainLayout__sidebarContent">
@@ -215,6 +233,11 @@ function closeDiff() {
         </div>
         
         <EnvironmentManagerModal v-if="envStore.showManager" />
+        <ImportModal 
+            v-if="showImportModal" 
+            @close="showImportModal = false"
+            @imported="handleImported"
+        />
     </div>
 </template>
 

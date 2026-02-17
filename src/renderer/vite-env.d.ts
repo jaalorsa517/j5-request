@@ -14,10 +14,12 @@ declare global {
             fs: {
                 readDir: (path: string) => Promise<J5FileEntry[]>;
                 readFile: (path: string) => Promise<J5Request>;
+                readTextFile: (path: string) => Promise<string>;
                 writeFile: (path: string, content: any) => Promise<void>;
                 createDirectory: (path: string) => Promise<void>;
                 rename: (oldPath: string, newPath: string) => Promise<void>;
                 delete: (path: string) => Promise<void>;
+                saveRequests: (requests: any[], targetDir: string) => Promise<string[]>;
                 selectFolder: () => Promise<string | null>;
                 selectFile: () => Promise<string | null>;
                 saveFileDialog: (defaultName?: string) => Promise<string | null>;
@@ -40,7 +42,11 @@ declare global {
             };
             request: {
                 execute: (request: Partial<J5Request>, environment: Record<string, string>) => Promise<any>;
-            }
+            };
+            import: {
+                fromContent: (content: string, options?: any) => Promise<import('@/shared/import-types').ImportResult>;
+                detectFormat: (content: string) => Promise<import('@/shared/import-types').FormatDetectionResult>;
+            };
         }
     }
 }

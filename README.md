@@ -16,3 +16,38 @@ Objetivos Específicos:
     Interoperabilidad Total: Permitir la transición fluida desde otras herramientas mediante importadores de OpenAPI, Postman y cURL.
 
     Extensibilidad en TS: Ofrecer un entorno de scripting para pre/post-peticiones basado puramente en TypeScript, aprovechando el conocimiento del desarrollador.
+
+## Importar Requests
+
+J5-Request soporta la importación de requests desde múltiples formatos externos, facilitando la transición y reutilización de recursos existentes.
+
+### Formatos Soportados
+
+- **cURL**: Detecta y convierte comandos cURL (`curl -X POST ...`). Soportado: método, URL, headers, body (JSON y raw).
+- **OpenAPI 3.x**: Importa especificaciones completas (JSON o YAML). Soporta: endpoints, métodos, headers y parámetros.
+- **Postman Collection v2.1**: Importa colecciones exportadas en formato JSON.
+- **Insomnia Export**: Importa colecciones exportadas en formato JSON/YAML.
+- **JavaScript Fetch**: Detecta llamadas `fetch(...)` y extrae la configuración.
+- **PowerShell**: Detecta scripts usando `Invoke-WebRequest` o `Invoke-RestMethod`.
+
+### Cómo Utilizar
+
+1. **Abrir Importador**: Haz clic en el botón "Import" en la barra lateral izquierda.
+2. **Pegar Contenido**: Pega el código o texto en la pestaña "Pegar". El formato se detectará automáticamente.
+3. **Seleccionar Archivo**: Sube un archivo JSON/YAML en la pestaña "Archivo".
+### Ejemplos
+
+**cURL**
+```bash
+curl -X POST https://api.example.com/users -H "Content-Type: application/json" -d '{"name": "John"}'
+```
+
+**Fetch**
+```javascript
+fetch('https://api.example.com/users', {
+  method: 'POST',
+  body: JSON.stringify({ name: 'John' })
+})
+```
+
+> **Nota**: Actualmente no se importan scripts de prueba (Pre-request/Test) ni variables de entorno complejas de Postman/Insomnia. Solo se migra la definición de la petición HTTP.

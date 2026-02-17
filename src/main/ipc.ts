@@ -3,6 +3,7 @@ import path from 'path';
 import { FileSystemService } from '@/main/services/FileSystemService';
 import { gitService } from '@/main/services/GitService';
 import { RequestExecutor } from '@/main/services/RequestExecutor';
+import { importService } from '@/main/services/ImportService';
 
 const fsService = new FileSystemService();
 const requestExecutor = new RequestExecutor();
@@ -25,6 +26,10 @@ export function setupIpc(mainWindow: BrowserWindow) {
         return fsService.readFile(path);
     });
 
+    ipcMain.handle('fs:read-text-file', async (_, path: string) => {
+        return fsService.readTextFile(path);
+    });
+
     ipcMain.handle('fs:write-file', async (_, path: string, content: any) => {
         return fsService.writeFile(path, content);
     });
@@ -39,6 +44,10 @@ export function setupIpc(mainWindow: BrowserWindow) {
 
     ipcMain.handle('fs:delete', async (_, path: string) => {
         return fsService.deletePath(path);
+    });
+
+    ipcMain.handle('fs:save-requests', async (_, requests: any[], targetDir: string) => {
+        return fsService.saveImportedRequests(requests, targetDir);
     });
 
     ipcMain.handle('fs:select-folder', async () => {
@@ -135,5 +144,13 @@ export function setupIpc(mainWindow: BrowserWindow) {
         return requestExecutor.executeRequest(request, environment);
     });
 
+    // Import Handlers
+    ipcMain.handle('import:from-content', async (_, content: string, options?: any) => {
+        return importService.importFromContent(content, options);
+    });
+
+    ipcMain.handle('import:detect-format', async (_, content: string) => {
+        return importService.detectFormat(content);
+    });
 
 }
