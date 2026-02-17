@@ -9,7 +9,8 @@ import EnvironmentManagerModal from '@/renderer/components/EnvironmentManagerMod
 import ImportModal from '@/renderer/components/ImportModal.vue';
 import ContextMenu, { MenuItem } from '@/renderer/components/ContextMenu.vue';
 import ConfirmModal from '@/renderer/components/ConfirmModal.vue';
-import { J5FileEntry } from '@/shared/types';
+import ExportDialog from '@/renderer/components/ExportDialog.vue';
+import { J5FileEntry, J5Request } from '@/shared/types';
 import RequestTabBar from '@/renderer/components/RequestTabBar.vue';
 import { useFileSystemStore } from '@/renderer/stores/file-system';
 import { useRequestStore } from '@/renderer/stores/request';
@@ -37,6 +38,11 @@ const contextMenuItems = ref<MenuItem[]>([
 // Delete Modal State
 const showDeleteConfirm = ref(false);
 const itemToDelete = ref<J5FileEntry | null>(null);
+
+// Export Dialog State
+const showExportDialog = ref(false);
+const exportSingleRequest = ref<Partial<J5Request> | undefined>(undefined);
+const exportCollectionRequests = ref<J5Request[] | undefined>(undefined);
 
 // Navigation state
 const activeActivity = ref<'explorer' | 'git'>('explorer');
@@ -140,14 +146,48 @@ function handleNodeContextMenu(event: MouseEvent, entry: J5FileEntry) {
     contextMenuTarget.value = entry;
     contextMenuX.value = event.clientX;
     contextMenuY.value = event.clientY;
+    
+    // Update context menu items based on entry type
+    contextMenuItems.value = [
+        { label: 'Exportar...', action: 'export' },
+        { label: 'Eliminar', action: 'delete', danger: true }
+    ];
+    
     showContextMenu.value = true;
 }
 
-function handleContextMenuAction(item: MenuItem) {
+async function handleContextMenuAction(item: MenuItem) {
     showContextMenu.value = false;
     if (item.action === 'delete' && contextMenuTarget.value) {
         itemToDelete.value = contextMenuTarget.value;
         showDeleteConfirm.value = true;
+    } else if (item.action === 'export' && contextMenuTarget.value) {
+        const target = contextMenuTarget.value;
+        if (target.type === 'directory') {
+            try {
+                // Show loading indicator?
+                const reqs = await window.electron.fs.readAllRequests(target.path);
+                if (!reqs || reqs.length === 0) {
+                    alert('No se encontraron peticiones en la carpeta seleccionada.');
+                    return;
+                }
+                exportCollectionRequests.value = reqs;
+                exportSingleRequest.value = undefined;
+                showExportDialog.value = true;
+            } catch (e: any) {
+                alert('Error al leer la carpeta: ' + e.message);
+            }
+        } else {
+             // Single file
+             try {
+                 const req = await window.electron.fs.readFile(target.path);
+                 exportSingleRequest.value = req;
+                 exportCollectionRequests.value = undefined;
+                 showExportDialog.value = true;
+             } catch (e: any) {
+                 alert('Error al leer el archivo: ' + e.message);
+             }
+        }
     }
 }
 
@@ -299,6 +339,13 @@ async function confirmDelete() {
             :danger="true"
             @confirm="confirmDelete"
             @cancel="showDeleteConfirm = false"
+        />
+
+        <ExportDialog
+            :is-open="showExportDialog"
+            :request="exportSingleRequest"
+            :requests="exportCollectionRequests"
+            @close="showExportDialog = false"
         />
     </div>
 </template>

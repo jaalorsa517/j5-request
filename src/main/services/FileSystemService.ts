@@ -127,6 +127,35 @@ export class FileSystemService {
         await fs.rm(pathToDelete, { recursive: true, force: true });
     }
 
+    async readAllRequests(dirPath: string): Promise<any[]> {
+        const requests: any[] = [];
+        try {
+            const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+            for (const entry of entries) {
+                const fullPath = path.join(dirPath, entry.name);
+
+                if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+
+                if (entry.isDirectory()) {
+                    const childRequests = await this.readAllRequests(fullPath);
+                    requests.push(...childRequests);
+                } else if (entry.name.endsWith('.j5request')) {
+                    try {
+                        const content = await fs.readFile(fullPath, 'utf-8');
+                        const req = parseJson<any>(content);
+                        requests.push(req);
+                    } catch (e) {
+                        console.error(`Error reading request ${fullPath}`, e);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error(`Error reading dir ${dirPath}`, e);
+        }
+        return requests;
+    }
+
     watch(dirPath: string, onChange: (event: string, path: string) => void) {
         this.stopWatch();
 

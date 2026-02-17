@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('electron', {
     rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
     delete: (path: string) => ipcRenderer.invoke('fs:delete', path),
     saveRequests: (requests: any[], targetDir: string) => ipcRenderer.invoke('fs:save-requests', requests, targetDir),
+    readAllRequests: (path: string) => ipcRenderer.invoke('fs:read-all-requests', path),
     selectFolder: () => ipcRenderer.invoke('fs:select-folder'),
     selectFile: () => ipcRenderer.invoke('fs:select-file'),
     saveFileDialog: (defaultName?: string) => ipcRenderer.invoke('fs:save-file-dialog', defaultName),
@@ -61,5 +62,10 @@ contextBridge.exposeInMainWorld('electron', {
   import: {
     fromContent: (content: string, options?: any) => ipcRenderer.invoke('import:from-content', content, options),
     detectFormat: (content: string) => ipcRenderer.invoke('import:detect-format', content),
+  },
+  export: {
+    toClipboard: (content: string) => ipcRenderer.invoke('export:clipboard', content),
+    toFile: (content: string, defaultName?: string) => ipcRenderer.invoke('export:file', content, defaultName),
+    generate: (request: any, format: string) => ipcRenderer.invoke('export:generate', request, format)
   }
 })

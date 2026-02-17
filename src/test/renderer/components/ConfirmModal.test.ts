@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { mount } from '@vue/test-utils';
 import { describe, it, expect } from 'vitest';
 import ConfirmModal from '@/renderer/components/ConfirmModal.vue';

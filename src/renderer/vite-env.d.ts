@@ -20,6 +20,7 @@ declare global {
                 rename: (oldPath: string, newPath: string) => Promise<void>;
                 delete: (path: string) => Promise<void>;
                 saveRequests: (requests: any[], targetDir: string) => Promise<string[]>;
+                readAllRequests: (path: string) => Promise<J5Request[]>;
                 selectFolder: () => Promise<string | null>;
                 selectFile: () => Promise<string | null>;
                 saveFileDialog: (defaultName?: string) => Promise<string | null>;
@@ -46,6 +47,11 @@ declare global {
             import: {
                 fromContent: (content: string, options?: any) => Promise<import('@/shared/import-types').ImportResult>;
                 detectFormat: (content: string) => Promise<import('@/shared/import-types').FormatDetectionResult>;
+            };
+            export: {
+                toClipboard: (content: string) => Promise<void>;
+                toFile: (content: string, defaultName?: string) => Promise<string | null>;
+                generate: (request: Partial<J5Request> | J5Request[], format: string) => Promise<string>;
             };
         }
     }
