@@ -330,7 +330,9 @@ export const useRequestStore = defineStore('request', () => {
         // Si usamos targetPath directo, saltamos fsStore.saveRequest que usa selectedFile + selectedFilePath
         // Pero queremos mantener fsStore updated si coincide
 
-        await window.electron.fs.writeFile(targetPath, request);
+        // Clonar para eliminar Proxies de Vue que causan error "Object could not be cloned" en IPC
+        const requestClone = JSON.parse(JSON.stringify(request));
+        await window.electron.fs.writeFile(targetPath, requestClone);
 
         // Actualizar estado original después de guardar
         tab.originalState = snapshotRequest(reqState);
