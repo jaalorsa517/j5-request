@@ -7,6 +7,9 @@ import DiffEditor from '@/renderer/components/git/DiffEditor.vue';
 import EnvironmentSelector from '@/renderer/components/EnvironmentSelector.vue';
 import EnvironmentManagerModal from '@/renderer/components/EnvironmentManagerModal.vue';
 import ImportModal from '@/renderer/components/ImportModal.vue';
+import ContextMenu, { MenuItem } from '@/renderer/components/ContextMenu.vue';
+import ConfirmModal from '@/renderer/components/ConfirmModal.vue';
+import { J5FileEntry } from '@/shared/types';
 import RequestTabBar from '@/renderer/components/RequestTabBar.vue';
 import { useFileSystemStore } from '@/renderer/stores/file-system';
 import { useRequestStore } from '@/renderer/stores/request';
@@ -21,6 +24,19 @@ const themeStore = useThemeStore();
 const showNewRequestModal = ref(false);
 const newRequestName = ref('');
 const showImportModal = ref(false);
+
+// Context Menu State
+const showContextMenu = ref(false);
+const contextMenuX = ref(0);
+const contextMenuY = ref(0);
+const contextMenuTarget = ref<J5FileEntry | null>(null);
+const contextMenuItems = ref<MenuItem[]>([
+    { label: 'Eliminar', action: 'delete', danger: true }
+]);
+
+// Delete Modal State
+const showDeleteConfirm = ref(false);
+const itemToDelete = ref<J5FileEntry | null>(null);
 
 // Navigation state
 const activeActivity = ref<'explorer' | 'git'>('explorer');
@@ -119,6 +135,33 @@ function handleImported(count: number) {
     console.log(`Imported ${count} requests successfully`);
     // Potencialmente: await store.refreshDirectory();
 }
+
+function handleNodeContextMenu(event: MouseEvent, entry: J5FileEntry) {
+    contextMenuTarget.value = entry;
+    contextMenuX.value = event.clientX;
+    contextMenuY.value = event.clientY;
+    showContextMenu.value = true;
+}
+
+function handleContextMenuAction(item: MenuItem) {
+    showContextMenu.value = false;
+    if (item.action === 'delete' && contextMenuTarget.value) {
+        itemToDelete.value = contextMenuTarget.value;
+        showDeleteConfirm.value = true;
+    }
+}
+
+async function confirmDelete() {
+    if (itemToDelete.value) {
+        try {
+            await store.deleteItem(itemToDelete.value.path);
+            itemToDelete.value = null;
+            showDeleteConfirm.value = false;
+        } catch (e: any) {
+             alert('Error deleting item: ' + e.message);
+        }
+    }
+}
 </script>
 
 <template>
@@ -184,7 +227,7 @@ function handleImported(count: number) {
             </div>
             
             <div class="mainLayout__sidebarContent">
-                <FileTree v-if="activeActivity === 'explorer'" :entries="store.rootEntry" />
+                <FileTree v-if="activeActivity === 'explorer'" :entries="store.rootEntry" @node-contextmenu="handleNodeContextMenu" />
                 <GitPanel v-else-if="activeActivity === 'git'" @openDiff="handleOpenDiff" />
             </div>
         </aside>
@@ -237,6 +280,25 @@ function handleImported(count: number) {
             v-if="showImportModal" 
             @close="showImportModal = false"
             @imported="handleImported"
+        />
+
+        <ContextMenu 
+            v-if="showContextMenu"
+            :x="contextMenuX"
+            :y="contextMenuY"
+            :items="contextMenuItems"
+            @action="handleContextMenuAction"
+            @close="showContextMenu = false"
+        />
+
+        <ConfirmModal
+            :is-open="showDeleteConfirm"
+            :title="itemToDelete?.type === 'directory' ? 'Eliminar Carpeta' : 'Eliminar Archivo'"
+            :message="`¿Estás seguro de que deseas eliminar permanentemente '${itemToDelete?.name}'? Esta acción no se puede deshacer.`"
+            confirm-text="Eliminar"
+            :danger="true"
+            @confirm="confirmDelete"
+            @cancel="showDeleteConfirm = false"
         />
     </div>
 </template>

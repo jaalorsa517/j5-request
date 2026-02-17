@@ -179,6 +179,15 @@ export const useRequestStore = defineStore('request', () => {
         tabs.value.splice(index, 1);
     }
 
+    function closeTabByPath(path: string) {
+        const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
+        const tabsToClose = tabs.value.filter(t =>
+            t.filePath && (t.filePath === path || t.filePath.startsWith(path + separator))
+        );
+
+        tabsToClose.forEach(t => closeTab(t.id));
+    }
+
     function setActiveTab(tabId: string) {
         const tab = tabs.value.find(t => t.id === tabId);
         if (tab) {
@@ -466,6 +475,7 @@ export const useRequestStore = defineStore('request', () => {
         // Acciones
         addTab,
         closeTab,
+        closeTabByPath,
         setActiveTab,
         loadFromFile,
         saveToFile,

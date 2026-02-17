@@ -126,7 +126,15 @@ export const useFileSystemStore = defineStore('file-system', () => {
     async function deleteItem(path: string) {
         try {
             await window.electron.fs.delete(path);
-            if (selectedFilePath.value === path) {
+
+            // Cerrar pestañas abiertas
+            const { useRequestStore } = await import('@/renderer/stores/request');
+            const requestStore = useRequestStore();
+            requestStore.closeTabByPath(path);
+
+            // Limpiar selección si el archivo eliminado (o carpeta contenedora) estaba seleccionado
+            const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
+            if (selectedFilePath.value && (selectedFilePath.value === path || selectedFilePath.value.startsWith(path + separator))) {
                 selectedFile.value = null;
                 selectedFilePath.value = null;
             }
