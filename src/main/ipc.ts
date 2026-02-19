@@ -155,6 +155,14 @@ export function setupIpc(mainWindow: BrowserWindow) {
         return gitService.getStatus(repoPath);
     });
 
+    ipcMain.handle('git:is-repository', async (_, repoPath: string) => {
+        return gitService.isRepository(repoPath);
+    });
+
+    ipcMain.handle('git:init-repository', async (_, repoPath: string) => {
+        return gitService.initRepository(repoPath);
+    });
+
     ipcMain.handle('git:stage', async (_, repoPath: string, files: string[]) => {
         return gitService.stage(repoPath, files);
     });

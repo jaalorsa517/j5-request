@@ -6,6 +6,8 @@ import { useGitStore } from '@/renderer/stores/git';
 const mockGit = {
     findRepos: vi.fn(),
     getStatus: vi.fn(),
+    isRepository: vi.fn(),
+    initRepository: vi.fn(),
     stage: vi.fn(),
     unstage: vi.fn(),
     commit: vi.fn(),
@@ -13,6 +15,7 @@ const mockGit = {
     pull: vi.fn(),
     checkout: vi.fn(),
     getBranches: vi.fn(),
+    getFileContent: vi.fn(),
 };
 
 vi.stubGlobal('window', {
@@ -37,16 +40,42 @@ describe('Git Store', () => {
     it('should load repositories and select first one', async () => {
         const store = useGitStore();
         const repos = ['/path/to/repo1', '/path/to/repo2'];
+        mockGit.isRepository.mockResolvedValue(true);
         mockGit.findRepos.mockResolvedValue(repos);
         mockGit.getStatus.mockResolvedValue({ current: 'main' });
         mockGit.getBranches.mockResolvedValue(['main']);
 
         await store.loadRepositories('/path/to/workspace');
 
+        expect(mockGit.isRepository).toHaveBeenCalledWith('/path/to/workspace');
         expect(mockGit.findRepos).toHaveBeenCalledWith('/path/to/workspace');
         expect(store.repositories).toEqual(repos);
         expect(store.selectedRepo).toBe(repos[0]);
         expect(mockGit.getStatus).toHaveBeenCalledWith(repos[0]);
+        expect(store.hasRepo).toBe(true);
+    });
+
+    it('should handle workspace without git repository', async () => {
+        const store = useGitStore();
+        mockGit.isRepository.mockResolvedValue(false);
+        mockGit.findRepos.mockResolvedValue([]);
+
+        await store.loadRepositories('/path/to/empty');
+
+        expect(store.hasRepo).toBe(false);
+        expect(store.repositories).toEqual([]);
+    });
+
+    it('should initialize repository', async () => {
+        const store = useGitStore();
+        mockGit.initRepository.mockResolvedValue(undefined);
+        mockGit.isRepository.mockResolvedValue(true);
+        mockGit.findRepos.mockResolvedValue(['/path/to/repo']);
+
+        await store.initRepository('/path/to/repo');
+
+        expect(mockGit.initRepository).toHaveBeenCalledWith('/path/to/repo');
+        expect(store.hasRepo).toBe(true);
     });
 
     it('should select repo', async () => {
@@ -134,7 +163,7 @@ describe('Git Store', () => {
         const store = useGitStore();
         store.selectedRepo = '/repo1';
         mockGit.stage.mockRejectedValue(new Error('Stage error'));
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
         await store.stage(['file1']);
 
@@ -146,7 +175,7 @@ describe('Git Store', () => {
         const store = useGitStore();
         store.selectedRepo = '/repo1';
         mockGit.unstage.mockRejectedValue(new Error('Unstage error'));
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
         await store.unstage(['file1']);
 
@@ -164,14 +193,14 @@ describe('Git Store', () => {
     it('should guard all actions when no repo selected', async () => {
         const store = useGitStore();
         store.selectedRepo = '';
-        
+
         await store.checkout('b');
         await store.stage([]);
         await store.unstage([]);
         await store.commit('m');
         await store.push();
         await store.pull();
-        
+
         expect(mockGit.getStatus).not.toHaveBeenCalled();
     });
 
@@ -179,7 +208,7 @@ describe('Git Store', () => {
         const store = useGitStore();
         store.selectedRepo = '/repo1';
         mockGit.checkout.mockRejectedValue(new Error('Checkout error'));
-        
-        await expect(store.checkout('branch')).rejects.toThrow('Checkout error'); 
+
+        await expect(store.checkout('branch')).rejects.toThrow('Checkout error');
     });
 });

@@ -15,13 +15,21 @@ export class GitService {
         return simpleGit(repoPath);
     }
 
-    async isRepo(repoPath: string): Promise<boolean> {
+    async isRepository(repoPath: string): Promise<boolean> {
         try {
+            const stats = await fs.stat(repoPath);
+            if (!stats.isDirectory()) return false;
+
             const git = this.getGit(repoPath);
             return await git.checkIsRepo(CheckRepoActions.IS_REPO_ROOT);
         } catch (e) {
             return false;
         }
+    }
+
+    async initRepository(repoPath: string): Promise<void> {
+        const git = this.getGit(repoPath);
+        await git.init();
     }
 
     async getStatus(repoPath: string): Promise<GitStatus> {
@@ -77,7 +85,7 @@ export class GitService {
         const repos: string[] = [];
 
         // Check root
-        if (await this.isRepo(workspacePath)) {
+        if (await this.isRepository(workspacePath)) {
             repos.push(workspacePath);
         }
 
@@ -88,7 +96,7 @@ export class GitService {
             for (const entry of entries) {
                 if (entry.isDirectory()) {
                     const childPath = path.join(workspacePath, entry.name);
-                    if (await this.isRepo(childPath)) { // Re-using isRepo check
+                    if (await this.isRepository(childPath)) { // Re-using isRepository check
                         repos.push(childPath);
                     }
                 }

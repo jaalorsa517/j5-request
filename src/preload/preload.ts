@@ -46,6 +46,8 @@ contextBridge.exposeInMainWorld('electron', {
   },
   git: {
     getStatus: (path: string) => ipcRenderer.invoke('git:status', path),
+    isRepository: (path: string) => ipcRenderer.invoke('git:is-repository', path),
+    initRepository: (path: string) => ipcRenderer.invoke('git:init-repository', path),
     stage: (path: string, files: string[]) => ipcRenderer.invoke('git:stage', path, files),
     unstage: (path: string, files: string[]) => ipcRenderer.invoke('git:unstage', path, files),
     commit: (path: string, message: string) => ipcRenderer.invoke('git:commit', path, message),

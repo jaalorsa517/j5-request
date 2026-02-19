@@ -31,6 +31,8 @@ declare global {
             };
             git: {
                 getStatus: (path: string) => Promise<import('../shared/types').GitStatus>;
+                isRepository: (path: string) => Promise<boolean>;
+                initRepository: (path: string) => Promise<void>;
                 stage: (path: string, files: string[]) => Promise<void>;
                 unstage: (path: string, files: string[]) => Promise<void>;
                 commit: (path: string, message: string) => Promise<void>;
