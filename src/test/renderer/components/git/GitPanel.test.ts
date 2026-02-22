@@ -9,39 +9,69 @@ import { useGitStore } from '@/renderer/stores/git';
 import { useFileSystemStore } from '@/renderer/stores/file-system';
 
 // Mock child components
-vi.mock('@/renderer/components/git/GitRepositoryItem.vue', () => ({ 
-    default: { 
+vi.mock('@/renderer/components/git/GitRepositoryItem.vue', () => ({
+    default: {
         name: 'GitRepositoryItem',
         template: '<div class="mock-repo">Repo</div>',
         emits: ['checkout', 'refresh']
-    } 
+    }
 }));
-vi.mock('@/renderer/components/git/GitChangesList.vue', () => ({ 
-    default: { 
+vi.mock('@/renderer/components/git/GitChangesList.vue', () => ({
+    default: {
         name: 'GitChangesList',
         template: '<div class="mock-changes">Changes</div>',
         emits: ['stage', 'unstage', 'openDiff']
-    } 
+    }
 }));
-vi.mock('@/renderer/components/git/GitCommitBox.vue', () => ({ 
-    default: { 
+vi.mock('@/renderer/components/git/GitCommitBox.vue', () => ({
+    default: {
         name: 'GitCommitBox',
         template: '<div class="mock-commit">Commit</div>',
         emits: ['commit', 'sync']
-    } 
+    }
 }));
 
 describe('GitPanel.vue', () => {
-    it('renders empty state when no repo is selected', () => {
+    it('renders empty state when no repo is selected but hasRepo is true', () => {
         const pinia = createTestingPinia({
             createSpy: vi.fn,
             initialState: {
-                git: { selectedRepo: null, loading: false }
+                git: { selectedRepo: null, loading: false, hasRepo: true }
             }
         });
 
         const wrapper = mount(GitPanel, { global: { plugins: [pinia] } });
-        expect(wrapper.text()).toContain('No git repository found');
+        expect(wrapper.text()).toContain('No git repository found in workspace');
+        expect(wrapper.find('.git-btn-retry').exists()).toBe(true);
+    });
+
+    it('renders initialize button when hasRepo is false', () => {
+        const pinia = createTestingPinia({
+            createSpy: vi.fn,
+            initialState: {
+                git: { selectedRepo: null, loading: false, hasRepo: false }
+            }
+        });
+
+        const wrapper = mount(GitPanel, { global: { plugins: [pinia] } });
+        expect(wrapper.text()).toContain('This folder is not a Git repository');
+        expect(wrapper.find('.git-btn-init').exists()).toBe(true);
+    });
+
+    it('calls initRepository when initialize button is clicked', async () => {
+        const pinia = createTestingPinia({
+            createSpy: vi.fn,
+            initialState: {
+                git: { selectedRepo: null, loading: false, hasRepo: false },
+                'file-system': { currentPath: '/test/path' }
+            }
+        });
+
+        const wrapper = mount(GitPanel, { global: { plugins: [pinia] } });
+        const store = useGitStore();
+
+        await wrapper.find('.git-btn-init').trigger('click');
+        expect(store.initRepository).toHaveBeenCalledWith('/test/path');
     });
 
     it('renders git content when repo is selected', () => {
@@ -67,7 +97,7 @@ describe('GitPanel.vue', () => {
         });
         const wrapper = mount(GitPanel, { global: { plugins: [pinia] } });
         const store = useGitStore();
-        
+
         const repoItem = wrapper.getComponent({ name: 'GitRepositoryItem' });
         await repoItem.vm.$emit('checkout', 'dev');
         expect(store.checkout).toHaveBeenCalledWith('dev');
@@ -82,7 +112,7 @@ describe('GitPanel.vue', () => {
         });
         const wrapper = mount(GitPanel, { global: { plugins: [pinia] } });
         const store = useGitStore();
-        
+
         const commitBox = wrapper.getComponent({ name: 'GitCommitBox' });
         await commitBox.vm.$emit('commit', 'msg');
         expect(store.commit).toHaveBeenCalledWith('msg');
@@ -131,7 +161,7 @@ describe('GitPanel.vue', () => {
 
         (fsStore as any).currentPath = '/new/path';
         await wrapper.vm.$nextTick();
-        
+
         expect(gitStore.loadRepositories).toHaveBeenCalledWith('/new/path');
     });
 
@@ -144,7 +174,7 @@ describe('GitPanel.vue', () => {
         });
         const wrapper = mount(GitPanel, { global: { plugins: [pinia] } });
         const store = useGitStore();
-        
+
         const changesList = wrapper.getComponent({ name: 'GitChangesList' });
         await changesList.vm.$emit('stage', ['f1']);
         expect(store.stage).toHaveBeenCalledWith(['f1']);
@@ -161,7 +191,7 @@ describe('GitPanel.vue', () => {
             }
         });
         const wrapper = mount(GitPanel, { global: { plugins: [pinia] } });
-        
+
         const changesList = wrapper.getComponent({ name: 'GitChangesList' });
         await changesList.vm.$emit('openDiff', 'file.txt');
 

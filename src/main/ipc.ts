@@ -4,12 +4,15 @@ import { FileSystemService } from '@/main/services/FileSystemService';
 import { gitService } from '@/main/services/GitService';
 import { RequestExecutor } from '@/main/services/RequestExecutor';
 import { importService } from '@/main/services/ImportService';
+import { ProjectConfigService, mergeSSLConfigs } from '@/main/services/ProjectConfigService';
+import { makeRelativePath } from '@/main/utils/pathUtils';
 
 import { ExportService } from '@/main/services/ExportService';
 
 const fsService = new FileSystemService();
 const requestExecutor = new RequestExecutor();
 const exportService = new ExportService();
+const projectConfigService = new ProjectConfigService();
 
 export function setupIpc(mainWindow: BrowserWindow) {
     // ... existing handlers ...
@@ -80,6 +83,10 @@ export function setupIpc(mainWindow: BrowserWindow) {
 
     ipcMain.handle('fs:write-file', async (_, path: string, content: any) => {
         return fsService.writeFile(path, content);
+    });
+
+    ipcMain.handle('fs:write-text-file', async (_, path: string, content: string) => {
+        return fsService.writeTextFile(path, content);
     });
 
     ipcMain.handle('fs:create-dir', async (_, path: string) => {
@@ -155,6 +162,14 @@ export function setupIpc(mainWindow: BrowserWindow) {
         return gitService.getStatus(repoPath);
     });
 
+    ipcMain.handle('git:is-repository', async (_, repoPath: string) => {
+        return gitService.isRepository(repoPath);
+    });
+
+    ipcMain.handle('git:init-repository', async (_, repoPath: string) => {
+        return gitService.initRepository(repoPath);
+    });
+
     ipcMain.handle('git:stage', async (_, repoPath: string, files: string[]) => {
         return gitService.stage(repoPath, files);
     });
@@ -192,8 +207,38 @@ export function setupIpc(mainWindow: BrowserWindow) {
     });
 
     // Request Executor
-    ipcMain.handle('request:execute', async (_, request: any, environment: any) => {
-        return requestExecutor.executeRequest(request, environment);
+    ipcMain.handle('request:execute', async (_, request: any, environment: any, projectRoot?: string) => {
+        let finalRequest = request;
+        console.log("EXECUTE REQUEST - projectRoot provided from UI:", projectRoot);
+        if (projectRoot) {
+            const projectConfig = await projectConfigService.loadProjectConfig(projectRoot);
+            console.log("Project config loaded:", projectConfig);
+            if (projectConfig?.ssl) {
+                const mergedSSL = mergeSSLConfigs(projectConfig.ssl, request.sslConfig);
+                console.log("Merged SSL:", mergedSSL);
+                finalRequest = { ...request, sslConfig: mergedSSL };
+            }
+        }
+        return requestExecutor.executeRequest(finalRequest, environment, projectRoot);
+    });
+
+    ipcMain.handle('fs:select-cert-file', async () => {
+        const { dialog } = await import('electron');
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openFile', 'showHiddenFiles'],
+            filters: [
+                { name: 'Certificates', extensions: ['pem', 'crt', 'cer', 'key', 'p12', 'pfx'] },
+                { name: 'All Files', extensions: ['*'] }
+            ]
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+            return null;
+        }
+        return result.filePaths[0];
+    });
+
+    ipcMain.handle('fs:relative-path', (_, projectRoot: string, file: string) => {
+        return makeRelativePath(file, projectRoot);
     });
 
     // Import Handlers

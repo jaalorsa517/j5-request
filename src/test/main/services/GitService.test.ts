@@ -37,22 +37,32 @@ describe('GitService', () => {
 
         // Setup the mock for the default export
         (simpleGit as any).mockReturnValue(mockGit);
+        (fs.stat as any).mockResolvedValue({ isDirectory: () => true });
 
         gitService = new GitService();
     });
 
-    describe('isRepo', () => {
+    describe('isRepository', () => {
         it('should return true if directory is a git repo', async () => {
             mockGit.checkIsRepo.mockResolvedValue(true);
-            const result = await gitService.isRepo('/test/repo');
+            const result = await gitService.isRepository('/test/repo');
             expect(result).toBe(true);
             expect(simpleGit).toHaveBeenCalledWith('/test/repo');
         });
 
         it('should return false if check fails', async () => {
             mockGit.checkIsRepo.mockRejectedValue(new Error('Not a repo'));
-            const result = await gitService.isRepo('/test/repo');
+            const result = await gitService.isRepository('/test/repo');
             expect(result).toBe(false);
+        });
+    });
+
+    describe('initRepository', () => {
+        it('should initialize a git repository', async () => {
+            mockGit.init = vi.fn().mockResolvedValue({});
+            await gitService.initRepository('/test/repo');
+            expect(mockGit.init).toHaveBeenCalled();
+            expect(simpleGit).toHaveBeenCalledWith('/test/repo');
         });
     });
 
@@ -149,12 +159,12 @@ describe('GitService', () => {
         it('should find repositories in workspace', async () => {
             const workspacePath = '/test/workspace';
 
-            // Mock isRepo
-            // Since isRepo calls this.getGit -> simpleGit, we can mock via simpleGit or spyOn isRepo.
-            // Spying on isRepo is easier to control logic.
-            const isRepoSpy = vi.spyOn(gitService, 'isRepo');
+            // Mock isRepository
+            // Since isRepository calls this.getGit -> simpleGit, we can mock via simpleGit or spyOn isRepository.
+            // Spying on isRepository is easier to control logic.
+            const isRepositorySpy = vi.spyOn(gitService, 'isRepository');
 
-            isRepoSpy.mockImplementation(async (repoPath) => {
+            isRepositorySpy.mockImplementation(async (repoPath: string) => {
                 if (repoPath === workspacePath) return true;
                 if (repoPath === path.join(workspacePath, 'repo1')) return true;
                 return false;
@@ -189,10 +199,10 @@ describe('GitService', () => {
         it('should handle scan errors gracefully', async () => {
             const workspacePath = '/test/workspace';
             (fs.readdir as any).mockRejectedValue(new Error('Scan failed'));
-            
-            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
             const result = await gitService.findRepositories(workspacePath);
-            
+
             expect(result).toEqual([]);
             expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Error scanning workspace'), expect.any(Error));
             consoleSpy.mockRestore();

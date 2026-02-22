@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-type Tab = 'headers' | 'params' | 'body' | 'pre-request' | 'tests';
+type Tab = 'headers' | 'params' | 'body' | 'pre-request' | 'tests' | 'ssl';
 
 const activeTab = ref<Tab>('body');
 </script>
@@ -44,6 +44,13 @@ const activeTab = ref<Tab>('body');
             >
                 Tests
             </button>
+            <button
+                class="requestTabs__tab"
+                :class="{ 'requestTabs__tab--active': activeTab === 'ssl' }"
+                @click="activeTab = 'ssl'"
+            >
+                SSL
+            </button>
         </div>
         <div class="requestTabs__content">
             <slot :name="activeTab" />
@@ -55,7 +62,8 @@ const activeTab = ref<Tab>('body');
 .requestTabs {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 .requestTabs__header {

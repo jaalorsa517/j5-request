@@ -8,17 +8,36 @@ export const useGitStore = defineStore('git', () => {
     const status = ref<GitStatus | null>(null);
     const branches = ref<string[]>([]);
     const loading = ref(false);
+    const hasRepo = ref(true);
 
     const currentBranch = computed(() => status.value?.current || '');
 
     async function loadRepositories(workspacePath: string) {
         loading.value = true;
+        // Reset state for new workspace
+        selectedRepo.value = '';
+        repositories.value = [];
+        status.value = null;
+        branches.value = [];
+        hasRepo.value = false;
+
         try {
+            hasRepo.value = await window.electron.git.isRepository(workspacePath);
             repositories.value = await window.electron.git.findRepos(workspacePath);
             if (repositories.value.length > 0 && !selectedRepo.value) {
                 selectedRepo.value = repositories.value[0];
                 await updateStatus();
             }
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function initRepository(path: string) {
+        loading.value = true;
+        try {
+            await window.electron.git.initRepository(path);
+            await loadRepositories(path);
         } finally {
             loading.value = false;
         }
@@ -116,8 +135,10 @@ export const useGitStore = defineStore('git', () => {
         branches,
         currentBranch,
         loading,
+        hasRepo,
 
         loadRepositories,
+        initRepository,
         selectRepo,
         updateStatus,
         checkout,

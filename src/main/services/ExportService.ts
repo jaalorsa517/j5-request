@@ -17,7 +17,16 @@ export class ExportService {
             console.warn(this.getScriptWarning('cURL'));
         }
 
-        let command = `curl -X ${request.method} '${request.url}'`;
+        let command = '';
+        if (request.sslConfig?.rejectUnauthorized === false) {
+            command += '# CAUTION: SSL Verification Disabled\n';
+        }
+
+        command += `curl -X ${request.method} '${request.url}'`;
+
+        if (request.sslConfig?.rejectUnauthorized === false) {
+            command += ' -k';
+        }
 
         // Headers
         if (request.headers) {

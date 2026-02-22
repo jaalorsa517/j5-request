@@ -5,8 +5,14 @@
     </div>
     
     <div v-else-if="!selectedRepo" class="git-empty">
-      <p>No git repository found.</p>
-      <button @click="checkRepos" class="git-btn-retry">Scan again</button>
+      <div v-if="!hasRepo">
+        <p>This folder is not a Git repository.</p>
+        <button @click="handleInit" class="git-btn-init">Initialize Git</button>
+      </div>
+      <div v-else>
+        <p>No git repository found in workspace.</p>
+        <button @click="checkRepos" class="git-btn-retry">Scan again</button>
+      </div>
     </div>
 
     <div v-else class="git-content">
@@ -45,7 +51,7 @@ import GitCommitBox from '@/renderer/components/git/GitCommitBox.vue';
 const gitStore = useGitStore();
 const fsStore = useFileSystemStore();
 
-const { selectedRepo, currentBranch, branches, status, loading } = storeToRefs(gitStore);
+const { selectedRepo, currentBranch, branches, status, loading, hasRepo } = storeToRefs(gitStore);
 const { currentPath } = storeToRefs(fsStore);
 
 // Emit openDiff so parent (MainLayout) can handle showing the diff view
@@ -56,6 +62,16 @@ const emit = defineEmits<{
 async function checkRepos() {
     if (currentPath.value) {
         await gitStore.loadRepositories(currentPath.value);
+    }
+}
+
+async function handleInit() {
+    if (currentPath.value) {
+        try {
+            await gitStore.initRepository(currentPath.value);
+        } catch (error: any) {
+            alert(`Error initializing Git: ${error.message}`);
+        }
     }
 }
 
@@ -107,8 +123,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--sidebar-bg);
-  color: var(--text-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
   overflow: hidden;
 }
 
@@ -116,7 +132,7 @@ onMounted(async () => {
     padding: 20px;
     text-align: center;
     font-size: 0.9em;
-    color: var(--text-color-subtle);
+    color: var(--text-secondary);
 }
 
 .git-content {
@@ -125,13 +141,20 @@ onMounted(async () => {
     height: 100%;
 }
 
-.git-btn-retry {
+.git-btn-retry, .git-btn-init {
     margin-top: 10px;
-    padding: 6px 12px;
-    background-color: var(--primary-color);
-    color: white;
+    padding: 8px 16px;
+    background-color: var(--accent-color);
+    color: var(--text-inverse);
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.git-btn-retry:hover, .git-btn-init:hover {
+    background-color: var(--accent-hover);
+    filter: none;
 }
 </style>

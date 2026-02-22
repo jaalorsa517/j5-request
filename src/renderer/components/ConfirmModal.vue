@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
     isOpen: boolean;
     title: string;
     message: string;

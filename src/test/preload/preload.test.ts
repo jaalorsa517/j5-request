@@ -181,10 +181,10 @@ describe('Preload Script', () => {
             return call[1].request;
         };
 
-        it('should call correct ipc channels', () => {
+        it('should have execute method calling invoke request:execute', () => {
             const requestApi = getRequestApi();
             requestApi.execute({}, {});
-            expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('request:execute', {}, {});
+            expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('request:execute', {}, {}, undefined);
         });
     });
 });
