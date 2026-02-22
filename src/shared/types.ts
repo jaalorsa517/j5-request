@@ -17,6 +17,18 @@ export type J5Request = {
     body?: J5RequestBody;
     preRequestScript?: string;
     postResponseScript?: string;
+    sslConfig?: SSLConfig;
+};
+
+export type SSLConfig = {
+    ca?: string[];
+    clientCert?: string;
+    clientKey?: string;
+    rejectUnauthorized?: boolean;
+};
+
+export type ProjectConfig = {
+    ssl?: SSLConfig;
 };
 
 export type J5FileEntry = {
@@ -69,6 +81,7 @@ export type RequestState = {
     bodyType: 'json' | 'text' | 'xml' | 'form-data' | 'none';
     preRequestScript: string;
     postResponseScript: string;
+    sslConfig?: SSLConfig;
 };
 
 export type ResponseState = {

@@ -57,6 +57,12 @@ export class FileSystemService {
         return await fs.readFile(filePath, 'utf-8');
     }
 
+    async writeTextFile(filePath: string, content: string): Promise<void> {
+        const dir = path.dirname(filePath);
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(filePath, content, 'utf-8');
+    }
+
     /**
      * Writes a request to disk.
      * RNF-01: Uses serializeJson for deterministic sorting.

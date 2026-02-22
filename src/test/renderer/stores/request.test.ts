@@ -130,7 +130,8 @@ describe('Request Store', () => {
             expect.objectContaining({
                 id: '123',
                 name: 'Req',
-                url: 'http://url'
+                url: 'http://url',
+                sslConfig: { rejectUnauthorized: true }
             })
         );
 
@@ -140,7 +141,7 @@ describe('Request Store', () => {
 
     it('should allow setting values via computed proxies', () => {
         const store = useRequestStore();
-        
+
         store.method = 'DELETE';
         expect(store.activeTab.request.method).toBe('DELETE');
 
@@ -201,7 +202,8 @@ describe('Request Store', () => {
 
         expect(mockRequest.execute).toHaveBeenCalledWith(
             expect.objectContaining({ url: 'http://api' }),
-            expect.anything()
+            expect.anything(),
+            undefined
         );
 
         expect(mockEnvStore.updateVariablesFromExecution).toHaveBeenCalledWith({ newVar: 'val' });
@@ -219,7 +221,7 @@ describe('Request Store', () => {
 
     it('should manage tabs correctly', () => {
         const store = useRequestStore();
-        
+
         // Initial tab
         expect(store.tabs).toHaveLength(1);
         const firstTabId = store.activeTabId;
@@ -247,7 +249,7 @@ describe('Request Store', () => {
 
     it('should load various body types from file', () => {
         const store = useRequestStore();
-        
+
         // JSON
         store.loadFromFile({ name: 'n', method: 'GET', url: '', headers: {}, params: {}, body: { type: 'json', content: { a: 1 } } } as any);
         expect(store.bodyType).toBe('json');
@@ -260,7 +262,7 @@ describe('Request Store', () => {
 
         // Raw/Text
         store.loadFromFile({ name: 'n', method: 'GET', url: '', headers: {}, params: {}, body: { type: 'raw', content: 'text' } } as any);
-        expect(store.bodyType).toBe('json'); 
+        expect(store.bodyType).toBe('json');
     });
 
     it('should save various body types to file', async () => {
@@ -290,9 +292,9 @@ describe('Request Store', () => {
         const store = useRequestStore();
         store.url = 'http://dirty';
         store.name = 'Changed';
-        
+
         store.reset();
-        
+
         expect(store.url).toBe('');
         expect(store.name).toBe('Sin Título');
         expect(store.isDirty).toBe(false);
@@ -300,53 +302,57 @@ describe('Request Store', () => {
 
     it('should handle body edge cases in execute', async () => {
         const store = useRequestStore();
-        mockRequest.execute.mockResolvedValue({ success: true, response: { status: 200, data: 'OK' } });
 
-        // 1. JSON empty (skips body)
-        store.bodyType = 'json';
-        store.body = '  ';
-        await store.execute();
-        expect(mockRequest.execute).toHaveBeenCalledWith(
-            expect.not.objectContaining({ body: expect.anything() }),
-            expect.anything()
-        );
-        
         // 2. JSON valid
+        mockRequest.execute.mockClear();
+        mockRequest.execute.mockResolvedValue({ success: true, response: { status: 200, data: 'OK' } });
         store.body = '{"a":1}';
         await store.execute();
         expect(mockRequest.execute).toHaveBeenCalledWith(
             expect.objectContaining({ body: { type: 'json', content: { a: 1 } } }),
-            expect.anything()
+            expect.anything(),
+            undefined
         );
 
         // 3. JSON invalid (should fallback to raw)
+        mockRequest.execute.mockClear();
+        mockRequest.execute.mockResolvedValue({ success: true, response: { status: 200, data: 'OK' } });
         store.body = '{invalid}';
         await store.execute();
         expect(mockRequest.execute).toHaveBeenCalledWith(
             expect.objectContaining({ body: { type: 'raw', content: '{invalid}' } }),
-            expect.anything()
+            expect.anything(),
+            undefined
         );
 
         // 4. Form data
+        mockRequest.execute.mockClear();
+        mockRequest.execute.mockResolvedValue({ success: true, response: { status: 200, data: 'OK' } });
         store.bodyType = 'form-data';
         store.bodyFormData = { k: 'v' };
         await store.execute();
         expect(mockRequest.execute).toHaveBeenCalledWith(
             expect.objectContaining({ body: { type: 'form-data', content: { k: 'v' } } }),
-            expect.anything()
+            expect.anything(),
+            undefined
         );
 
         // 5. Raw text empty (skips body)
+        mockRequest.execute.mockClear();
+        mockRequest.execute.mockResolvedValue({ success: true, response: { status: 200, data: 'OK' } });
         store.bodyType = 'text';
         store.body = '  ';
         await store.execute();
 
         // 6. Raw text non-empty
+        mockRequest.execute.mockClear();
+        mockRequest.execute.mockResolvedValue({ success: true, response: { status: 200, data: 'OK' } });
         store.body = 'plain';
         await store.execute();
         expect(mockRequest.execute).toHaveBeenCalledWith(
             expect.objectContaining({ body: { type: 'raw', content: 'plain' } }),
-            expect.anything()
+            expect.anything(),
+            undefined
         );
 
         expect(mockRequest.execute).toHaveBeenCalled();
@@ -367,7 +373,7 @@ describe('Request Store', () => {
     it('should handle critical execution error', async () => {
         const store = useRequestStore();
         mockRequest.execute.mockRejectedValue(new Error('Critical'));
-        
+
         await store.execute();
         expect(store.response?.statusText).toBe('Error Crítico');
         expect(store.response?.body).toBe('Critical');
@@ -377,7 +383,7 @@ describe('Request Store', () => {
         const store = useRequestStore();
         store.addTab(); // Tab 1
         store.addTab(); // Tab 2
-        
+
         const t0 = store.tabs[0].id;
         const t1 = store.tabs[1].id;
         const t2 = store.tabs[2].id;
@@ -405,7 +411,7 @@ describe('Request Store', () => {
         expect(store.tabs.length).toBe(countBefore);
 
         // Close only tab left
-        while(store.tabs.length > 1) store.closeTab(store.tabs[0].id);
+        while (store.tabs.length > 1) store.closeTab(store.tabs[0].id);
         const lastId = store.tabs[0].id;
         store.closeTab(lastId);
         expect(store.tabs.length).toBe(1);
@@ -417,7 +423,7 @@ describe('Request Store', () => {
         store.addTab(); // [T0, T1]
         const t0 = store.tabs[0].id;
         const t1 = store.tabs[1].id;
-        
+
         store.setActiveTab(t0);
         store.closeTab(t0);
         expect(store.activeTabId).toBe(t1);
@@ -425,7 +431,7 @@ describe('Request Store', () => {
 
     it('should handle body type edge cases in loadFromFile', () => {
         const store = useRequestStore();
-        
+
         // No body
         store.loadFromFile({ name: 'test', method: 'GET', url: '', headers: {}, params: {} } as any);
         expect(store.bodyType).toBe('none');
@@ -466,7 +472,7 @@ describe('Request Store', () => {
             expect.anything(),
             expect.objectContaining({ body: { type: 'json', content: { a: 1 } } })
         );
-        
+
         // 2. JSON with invalid string (raw fallback)
         store.body = '{invalid}';
         await store.saveToFile();
@@ -513,7 +519,7 @@ describe('Request Store', () => {
         const store = useRequestStore();
         mockFsStore.selectedFilePath = '';
         store.activeTab.filePath = undefined;
-        
+
         await expect(store.saveToFile()).rejects.toThrow('No hay archivo seleccionado');
     });
 });

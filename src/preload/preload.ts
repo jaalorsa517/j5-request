@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electron', {
     readFile: (path: string) => ipcRenderer.invoke('fs:read-file', path),
     readTextFile: (path: string) => ipcRenderer.invoke('fs:read-text-file', path),
     writeFile: (path: string, content: any) => ipcRenderer.invoke('fs:write-file', path, content),
+    writeTextFile: (path: string, content: string) => ipcRenderer.invoke('fs:write-text-file', path, content),
     createDirectory: (path: string) => ipcRenderer.invoke('fs:create-dir', path),
     rename: (oldPath: string, newPath: string) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
     delete: (path: string) => ipcRenderer.invoke('fs:delete', path),
@@ -43,6 +44,7 @@ contextBridge.exposeInMainWorld('electron', {
     },
     getUserDataPath: () => ipcRenderer.invoke('app:get-user-data-path'),
     getGlobalsPath: () => ipcRenderer.invoke('app:get-globals-path'),
+    makeRelative: (root: string, file: string) => ipcRenderer.invoke('fs:relative-path', root, file),
   },
   git: {
     getStatus: (path: string) => ipcRenderer.invoke('git:status', path),
@@ -59,7 +61,7 @@ contextBridge.exposeInMainWorld('electron', {
     getFileContent: (path: string, filePath: string, ref: string) => ipcRenderer.invoke('git:get-file-content', path, filePath, ref),
   },
   request: {
-    execute: (request: any, environment: any) => ipcRenderer.invoke('request:execute', request, environment)
+    execute: (request: any, environment: any, projectRoot?: string) => ipcRenderer.invoke('request:execute', request, environment, projectRoot)
   },
   import: {
     fromContent: (content: string, options?: any) => ipcRenderer.invoke('import:from-content', content, options),
@@ -69,5 +71,8 @@ contextBridge.exposeInMainWorld('electron', {
     toClipboard: (content: string) => ipcRenderer.invoke('export:clipboard', content),
     toFile: (content: string, defaultName?: string) => ipcRenderer.invoke('export:file', content, defaultName),
     generate: (request: any, format: string) => ipcRenderer.invoke('export:generate', request, format)
+  },
+  ssl: {
+    selectCertificateFile: () => ipcRenderer.invoke('fs:select-cert-file')
   }
 })

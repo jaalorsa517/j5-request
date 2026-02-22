@@ -4,6 +4,7 @@ import { ScriptExecuter } from '@/main/services/ScriptExecuter';
 import { J5Request } from '@/shared/types';
 import axios from 'axios';
 import * as fs from 'fs';
+import fsPromises from 'fs/promises';
 
 // Mock dependencies
 vi.mock('axios');
@@ -11,6 +12,13 @@ vi.mock('@/main/services/ScriptExecuter');
 vi.mock('fs', () => ({
     createReadStream: vi.fn(),
 }));
+vi.mock('fs/promises', () => {
+    const readFile = vi.fn();
+    return {
+        default: { readFile },
+        readFile // For named imports if any
+    };
+});
 vi.mock('form-data', () => {
     return {
         default: vi.fn().mockImplementation(function (this: any) {
@@ -21,11 +29,9 @@ vi.mock('form-data', () => {
         })
     };
 });
-// For integration testing RequestExecutor, using real EnvironmentManager is fine/better.
 
 describe('RequestExecutor', () => {
     let executor: RequestExecutor;
-    // const mockedAxios = axios as unknown as ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -105,10 +111,7 @@ describe('RequestExecutor', () => {
             environment: { token: '123' },
             logs: []
         });
-        // We need to access the private instance or mock the class implementation
-        // Since we mocked the module '@/main/services/ScriptExecuter', any new instance is a mock.
-        // However, typescript mocks are tricky with private properties.
-        // Let's rely on the module mock.
+
         (ScriptExecuter as any).mockImplementation(class MockScriptExecuter {
             execute = mockExecute;
         });
@@ -125,6 +128,7 @@ describe('RequestExecutor', () => {
         }));
         expect(result.environment).toHaveProperty('token', '123');
     });
+
     it('should resolve headers and params variables', async () => {
         const requestWithVars: J5Request = {
             ...basicRequest,
@@ -251,12 +255,10 @@ describe('RequestExecutor', () => {
         const lastCall = calls[calls.length - 1];
         const config = lastCall[0];
 
-        // Test validateStatus: should return true for any status
         expect(config.validateStatus(200)).toBe(true);
         expect(config.validateStatus(500)).toBe(true);
         expect(config.validateStatus(404)).toBe(true);
 
-        // Test transformResponse: should return data as is
         const rawData = '{"key": "value"}';
         const transformFn = config.transformResponse[0];
         expect(transformFn(rawData)).toBe(rawData);
@@ -296,5 +298,66 @@ describe('RequestExecutor', () => {
 
         const result = await executor.executeRequest(basicRequest, {});
         expect(result.response?.data).toBe('raw text');
+    });
+
+    it('should configure SSL agent when sslConfig is provided', async () => {
+        const sslRequest: J5Request = {
+            ...basicRequest,
+            sslConfig: {
+                ca: ['/path/to/ca.pem'],
+                clientCert: '/path/to/cert.pem',
+                clientKey: '/path/to/key.pem',
+                rejectUnauthorized: false
+            }
+        };
+
+        (fsPromises.readFile as any).mockResolvedValue(Buffer.from('mock-cert-content'));
+        (axios as any).mockResolvedValue({ status: 200, data: {} });
+
+        await executor.executeRequest(sslRequest, {});
+
+        expect(fsPromises.readFile).toHaveBeenCalledTimes(3);
+
+        const calls = (axios as any).mock.calls;
+        const config = calls[calls.length - 1][0];
+
+        expect(config.httpsAgent).toBeDefined();
+        const agentOptions = config.httpsAgent.options;
+        expect(agentOptions.rejectUnauthorized).toBe(false);
+        expect(agentOptions.ca[0]).toEqual(Buffer.from('mock-cert-content'));
+    });
+
+    it('should handle SSL certificate loading errors', async () => {
+        const sslRequest: J5Request = {
+            ...basicRequest,
+            sslConfig: {
+                clientCert: '/path/to/missing.pem'
+            }
+        };
+
+        (fsPromises.readFile as any).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
+        const result = await executor.executeRequest(sslRequest, {});
+
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('Failed to load SSL certificates');
+    });
+
+    it('should use default rejectUnauthorized when not specified', async () => {
+        const sslRequest: J5Request = {
+            ...basicRequest,
+            sslConfig: {
+                ca: ['/path/to/ca.pem']
+            }
+        };
+        (fsPromises.readFile as any).mockResolvedValue(Buffer.from('ca'));
+        (axios as any).mockResolvedValue({ status: 200, data: {} });
+
+        await executor.executeRequest(sslRequest, {});
+
+        const calls = (axios as any).mock.calls;
+        const config = calls[calls.length - 1][0];
+        const agentOptions = config.httpsAgent.options;
+        expect(agentOptions.rejectUnauthorized).toBeUndefined();
     });
 });

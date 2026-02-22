@@ -34,15 +34,16 @@ describe('RequestTabs.vue', () => {
                 headers: '<div>Headers</div>',
                 body: '<div>Body</div>',
                 'pre-request': '<div>Pre-req</div>',
-                tests: '<div>Tests</div>'
+                tests: '<div>Tests</div>',
+                ssl: '<div>SSL</div>'
             }
         });
         const buttons = wrapper.findAll('.requestTabs__tab');
-        expect(buttons).toHaveLength(5);
-        expect(buttons.map(b => b.text())).toEqual(['Params', 'Headers', 'Body', 'Pre-req', 'Tests']);
+        expect(buttons).toHaveLength(6);
+        expect(buttons.map(b => b.text())).toEqual(['Params', 'Headers', 'Body', 'Pre-req', 'Tests', 'SSL']);
 
         // Switch to all tabs
-        const tabNames = ['Params', 'Headers', 'Body', 'Pre-req', 'Tests'];
+        const tabNames = ['Params', 'Headers', 'Body', 'Pre-req', 'Tests', 'SSL'];
         for (let i = 0; i < buttons.length; i++) {
             await buttons[i].trigger('click');
             expect(wrapper.text()).toContain(tabNames[i]);

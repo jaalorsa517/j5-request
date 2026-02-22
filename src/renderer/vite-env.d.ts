@@ -16,6 +16,7 @@ declare global {
                 readFile: (path: string) => Promise<J5Request>;
                 readTextFile: (path: string) => Promise<string>;
                 writeFile: (path: string, content: any) => Promise<void>;
+                writeTextFile: (path: string, content: string) => Promise<void>;
                 createDirectory: (path: string) => Promise<void>;
                 rename: (oldPath: string, newPath: string) => Promise<void>;
                 delete: (path: string) => Promise<void>;
@@ -28,6 +29,7 @@ declare global {
                 onChanged: (callback: (event: string, path: string) => void) => () => void;
                 getUserDataPath: () => Promise<string>;
                 getGlobalsPath: () => Promise<string>;
+                makeRelative: (root: string, file: string) => Promise<string>;
             };
             git: {
                 getStatus: (path: string) => Promise<import('../shared/types').GitStatus>;
@@ -44,7 +46,10 @@ declare global {
                 getFileContent: (repoPath: string, filePath: string, ref: string) => Promise<string>;
             };
             request: {
-                execute: (request: Partial<J5Request>, environment: Record<string, string>) => Promise<any>;
+                execute: (request: Partial<J5Request>, environment: Record<string, string>, projectRoot?: string) => Promise<any>;
+            };
+            ssl: {
+                selectCertificateFile: () => Promise<string | null>;
             };
             import: {
                 fromContent: (content: string, options?: any) => Promise<import('@/shared/import-types').ImportResult>;

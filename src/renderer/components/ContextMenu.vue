@@ -7,7 +7,7 @@ export type MenuItem = {
     danger?: boolean;
 };
 
-const props = defineProps<{
+defineProps<{
     x: number;
     y: number;
     items: MenuItem[];

@@ -36,7 +36,8 @@ export const useRequestStore = defineStore('request', () => {
             bodyFormData: {},
             bodyType: 'json',
             preRequestScript: '',
-            postResponseScript: ''
+            postResponseScript: '',
+            sslConfig: { rejectUnauthorized: true }
         };
 
         return {
@@ -115,6 +116,11 @@ export const useRequestStore = defineStore('request', () => {
         set: (v) => activeTab.value.request.postResponseScript = v
     });
 
+    const sslConfig = computed({
+        get: () => activeTab.value.request.sslConfig,
+        set: (v) => activeTab.value.request.sslConfig = v
+    });
+
     // Response Proxy
     const response = computed({
         get: () => activeTab.value.response,
@@ -148,17 +154,7 @@ export const useRequestStore = defineStore('request', () => {
 
         // Si cerramos la pestaña activa, cambiar a otra
         if (tabId === activeTabId.value) {
-            // Intentar ir a la anterior, o a la siguiente, o crear una nueva si era la única
             if (tabs.value.length > 1) {
-                // Si hay más pestañas
-                // Preferir la de la izquierda, si no la de la derecha (que ahora será el indice actual tras borrar)
-                // Wait, if I delete current, next becomes current index.
-                // If I delete last, index-1 is new last.
-                // Logic:
-                // [A, B, C] -> Close B (idx 1). New active should be A (idx 0) or C (idx 1)?
-                // Browsers usually go to the one executed right before, code editors usually go left.
-                // Lets go to left (index-1) if exists, else right (index+1 effectively becomes index).
-
                 let nextActiveId = '';
                 if (index > 0) {
                     nextActiveId = tabs.value[index - 1].id;
@@ -167,8 +163,6 @@ export const useRequestStore = defineStore('request', () => {
                 }
                 activeTabId.value = nextActiveId;
             } else {
-                // Era la única, creamos una nueva antes de borrar? O reseteamos?
-                // Mejor crear una nueva y borrar esta, para mantener siempre 1.
                 const newTab = createNewTab();
                 tabs.value.push(newTab);
                 activeTabId.value = newTab.id;
@@ -198,8 +192,6 @@ export const useRequestStore = defineStore('request', () => {
             fsStore.selectedFilePath = tab.filePath || null;
 
             if (tab.filePath) {
-                // Construct minimal J5Request for fsStore (mainly for 'selectedFile' existence check in UI)
-                // We could construct fully but 'saveToFile' handles the full construction for saving.
                 const reqState = tab.request;
                 const req: J5Request = {
                     id: reqState.id,
@@ -210,11 +202,7 @@ export const useRequestStore = defineStore('request', () => {
                     params: reqState.params,
                     preRequestScript: reqState.preRequestScript,
                     postResponseScript: reqState.postResponseScript,
-                    // Body population omitted for brevity as it's computed logic, 
-                    // and 'selectedFile' is mostly used for "is selected" check in MainLayout.
-                    // IMPORTANT: If MainLayout uses selectedFile properties for display, this might be incomplete.
-                    // RequestEditor used selectedFile, but we moved to RequestPanel using RequestStore.
-                    // So MainLayout only uses it for "Save" button enable state.
+                    sslConfig: reqState.sslConfig,
                 };
                 fsStore.selectedFile = req;
             } else {
@@ -244,7 +232,8 @@ export const useRequestStore = defineStore('request', () => {
             postResponseScript: request.postResponseScript || '',
             body: '',
             bodyFormData: {},
-            bodyType: 'json'
+            bodyType: 'json',
+            sslConfig: request.sslConfig || { rejectUnauthorized: true }
         };
 
         // Procesar body
@@ -279,10 +268,6 @@ export const useRequestStore = defineStore('request', () => {
 
     // Acción: Guardar a archivo
     async function saveToFile() {
-        // Usar filePath de la pestaña activa si existe, sino intentar usar FileSystemStore (select or save as)
-        // Por compatibilidad con flujo actual, si no tiene filePath, confiamos en FileSystemStore.selectedFilePath
-        // Si tiene filePath, usamos ese.
-
         const fsStore = useFileSystemStore();
         const tab = activeTab.value;
         const targetPath = tab.filePath || fsStore.selectedFilePath;
@@ -302,6 +287,7 @@ export const useRequestStore = defineStore('request', () => {
             params: reqState.params,
             preRequestScript: reqState.preRequestScript,
             postResponseScript: reqState.postResponseScript,
+            sslConfig: reqState.sslConfig
         };
 
         // Agregar body si existe y no es 'none'
@@ -336,10 +322,6 @@ export const useRequestStore = defineStore('request', () => {
         }
 
         // Guardar a disco
-        // Si usamos targetPath directo, saltamos fsStore.saveRequest que usa selectedFile + selectedFilePath
-        // Pero queremos mantener fsStore updated si coincide
-
-        // Clonar para eliminar Proxies de Vue que causan error "Object could not be cloned" en IPC
         const requestClone = JSON.parse(JSON.stringify(request));
         await window.electron.fs.writeFile(targetPath, requestClone);
 
@@ -371,6 +353,7 @@ export const useRequestStore = defineStore('request', () => {
                 params: reqState.params,
                 preRequestScript: reqState.preRequestScript,
                 postResponseScript: reqState.postResponseScript,
+                sslConfig: reqState.sslConfig
             };
 
             if (reqState.bodyType !== 'none') {
@@ -402,10 +385,13 @@ export const useRequestStore = defineStore('request', () => {
             const envStore = useEnvironmentStore();
             const currentEnv = envStore.currentVariables;
 
+            const fsStore = useFileSystemStore();
+            const projectRoot = fsStore.currentPath || undefined;
+
             // Deep clone to remove Proxy wrappers before sending to Electron
             const plainRequest = JSON.parse(JSON.stringify(reqData));
 
-            const result = await window.electron.request.execute(plainRequest, currentEnv);
+            const result = await window.electron.request.execute(plainRequest, currentEnv, projectRoot);
 
             if (result.success && result.response) {
                 if (result.environment) {
@@ -465,6 +451,7 @@ export const useRequestStore = defineStore('request', () => {
         bodyType,
         preRequestScript,
         postResponseScript,
+        sslConfig,
         response,
 
         isLoading,

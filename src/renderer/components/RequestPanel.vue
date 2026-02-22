@@ -5,12 +5,16 @@ import RequestTabs from '@/renderer/components/RequestTabs.vue';
 import KeyValueEditor from '@/renderer/components/KeyValueEditor.vue';
 import RequestBodyEditor from '@/renderer/components/RequestBodyEditor.vue';
 import MonacoEditor from '@/renderer/components/MonacoEditor.vue';
+import SSLConfigPanel from '@/renderer/components/SSLConfigPanel.vue';
 
 const requestStore = useRequestStore();
 </script>
 
 <template>
     <div class="requestPanel">
+        <div v-if="requestStore.sslConfig?.rejectUnauthorized === false" class="insecure-banner">
+            ⚠️ SSL Verification Disabled
+        </div>
         <UrlBar />
         <RequestTabs>
             <template #params>
@@ -34,6 +38,9 @@ const requestStore = useRequestStore();
                     language="javascript" 
                 />
             </template>
+            <template #ssl>
+                <SSLConfigPanel v-model="requestStore.sslConfig" />
+            </template>
         </RequestTabs>
     </div>
 </template>
@@ -46,5 +53,14 @@ const requestStore = useRequestStore();
     width: 100%;
     background-color: var(--bg-primary);
     overflow: hidden;
+}
+
+.insecure-banner {
+    background-color: #ff4d4f;
+    color: white;
+    text-align: center;
+    padding: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
 }
 </style>
