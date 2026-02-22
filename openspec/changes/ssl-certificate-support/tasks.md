@@ -73,18 +73,18 @@
 
 - [x] 11.1 Crear tests unitarios para `validatePEMFormat()` con certificados válidos e inválidos.
 - [x] 11.2 Crear tests unitarios para `loadSSLCertificates()` verificando correcta construcción de `https.AgentOptions`.
-- [ ] 11.3 Crear test de integración ejecutando request contra servidor con certificado auto-firmado usando CA personalizada.
-- [ ] 11.4 Crear test verificando que mTLS funciona (requiere setup de servidor mTLS mock).
+- [x] 11.3 Crear test de integración ejecutando request contra servidor con certificado auto-firmado usando CA personalizada.
+- [x] 11.4 Crear test verificando que mTLS funciona (requiere setup de servidor mTLS mock).
 - [x] 11.5 Crear test verificando merge de project-level y request-level SSL config.
-- [ ] 11.6 Crear test de UI para `SSLConfigPanel` verificando agregado/remoción de certificados.
+- [x] 11.6 Crear test de UI para `SSLConfigPanel` verificando agregado/remoción de certificados.
 
 ## 12. Documentación
 
-- [ ] 12.1 Documentar estructura de `.j5project.json` en README o docs.
-- [ ] 12.2 Documentar formato de `sslConfig` en archivos `.j5request`.
-- [ ] 12.3 Agregar guía de uso: cómo configurar CA personalizada, mTLS, etc.
-- [ ] 12.4 Documentar conversión de formatos no-PEM usando OpenSSL (ej. `.p12` → `.pem`).
-- [ ] 12.5 Documentar riesgos de `rejectUnauthorized: false` y cuándo es apropiado usarlo.
+- [x] 12.1 Documentar estructura de `.j5project.json` en README o docs.
+- [x] 12.2 Documentar formato de `sslConfig` en archivos `.j5request`.
+- [x] 12.3 Agregar guía de uso: cómo configurar CA personalizada, mTLS, etc.
+- [x] 12.4 Documentar conversión de formatos no-PEM usando OpenSSL (ej. `.p12` → `.pem`).
+- [x] 12.5 Documentar riesgos de `rejectUnauthorized: false` y cuándo es apropiado usarlo.
 
 ## 13. Validación Manual
 

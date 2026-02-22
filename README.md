@@ -16,6 +16,37 @@ Objetivos Específicos:
     Interoperabilidad Total: Permitir la transición fluida desde otras herramientas mediante importadores de OpenAPI, Postman y cURL.
 
     Extensibilidad en TS: Ofrecer un entorno de scripting para pre/post-peticiones basado puramente en TypeScript, aprovechando el conocimiento del desarrollador.
+## Configuración SSL / TLS
+
+J5-Request soporta opciones avanzadas de conectividad segura tanto a nivel de peticiones individuales como configuraciones globales para todo tu proyecto o directorio de trabajo.
+
+### Nivel de Proyecto (`.j5project.json`)
+Puedes forzar el uso de ciertas Autoridades Certificadoras (CA) o certificados de cliente mTLS para **todas** las peticiones que se ejecuten dentro de un directorio de trabajo creando un archivo `.j5project.json` en la raíz de tu proyecto:
+
+```json
+{
+  "ssl": {
+    "ca": [".j5certs/ca.crt"],
+    "clientCert": ".j5certs/client.crt",
+    "clientKey": ".j5certs/client.key",
+    "rejectUnauthorized": true
+  }
+}
+```
+*Tip: Te recomendamos colocar tus certificados dentro de una carpeta oculta `.j5certs/` dentro del proyecto y subirlos a tu `.gitignore` si son de carácter sensible.*
+
+### Nivel de Petición (`.j5request`)
+Dentro de la UI de J5-Request, en la pestaña **SSL/TLS**, se pueden configurar estos mismos parámetros para hacer sobre-escritura (*override*) parcial sobre las reglas de proyecto. 
+En el código fuente subyacente de la petición (`.j5request`), se almacena bajo la llave `sslConfig`.
+
+### Advertencias de Seguridad ⚠️
+Desmarcar la opción de "Enable SSL Certificate Verification" equivale a usar banderas como `curl -k` (Insecure) y asienta la llave de configuración `rejectUnauthorized: false`. Esto te hace vulnerable a ataques de Intermediario (MitM). Úsalo exclusivamente en entornos locales de desarrollo. En estos casos, J5-Request mostrará una advertencia estricta de color rojo indicando el riesgo, y al exportarse a cURL o scripts, incluirá un comentario recalcando la desactivación.
+
+Para conversiones entre formatos de certificados propietarios a PEM soportados nativamente por NodeJS:
+```bash
+# Convertir de .p12 o .pfx a .pem
+openssl pkcs12 -in certificado.p12 -out certificado.pem -nodes
+```
 
 ## Importar Requests
 
