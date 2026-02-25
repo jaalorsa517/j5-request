@@ -48,7 +48,7 @@ function commit() {
 .git-commit-box {
   padding: 10px;
   border-top: 1px solid var(--border-color);
-  background-color: var(--sidebar-bg);
+  background-color: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -59,7 +59,7 @@ function commit() {
   height: 60px;
   resize: vertical;
   background-color: var(--input-bg);
-  color: var(--text-color);
+  color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 8px;
@@ -69,7 +69,7 @@ function commit() {
 }
 
 .git-commit-box__input:focus {
-    border-color: var(--primary-color);
+    border-color: var(--accent-color);
 }
 
 .git-commit-box__actions {
@@ -94,21 +94,21 @@ function commit() {
 }
 
 .git-commit-box__btn--primary {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: var(--accent-color);
+  color: var(--text-inverse);
   flex: 1;
 }
 
 .git-commit-box__btn--primary:hover:not(:disabled) {
-    background-color: var(--primary-hover);
+    background-color: var(--accent-hover);
 }
 
 .git-commit-box__btn--secondary {
-  background-color: var(--secondary-bg);
-  color: var(--text-color);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 .git-commit-box__btn--secondary:hover {
-    background-color: var(--hover-bg);
+    background-color: var(--input-border);
 }
 </style>

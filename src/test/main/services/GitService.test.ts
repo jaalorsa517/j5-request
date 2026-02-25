@@ -33,6 +33,7 @@ describe('GitService', () => {
             checkout: vi.fn(),
             branchLocal: vi.fn(),
             show: vi.fn(),
+            rm: vi.fn(),
         };
 
         // Setup the mock for the default export
@@ -111,6 +112,16 @@ describe('GitService', () => {
             const files = ['file1.txt'];
             await gitService.unstage('/test/repo', files);
             expect(mockGit.reset).toHaveBeenCalledWith(['HEAD', ...files]);
+        });
+
+        it('should fallback to rm --cached if HEAD is invalid (new repo)', async () => {
+            const files = ['file1.txt'];
+            mockGit.reset.mockRejectedValue(new Error('fatal: bad object HEAD'));
+            mockGit.rm.mockResolvedValue(true);
+
+            await gitService.unstage('/test/repo', files);
+            expect(mockGit.reset).toHaveBeenCalledWith(['HEAD', ...files]);
+            expect(mockGit.rm).toHaveBeenCalledWith(['--cached', ...files]);
         });
     });
 
@@ -239,6 +250,33 @@ describe('GitService', () => {
 
             // Expected relative path 'file.txt'
             expect(mockGit.show).toHaveBeenCalledWith(['HEAD:file.txt']);
+        });
+
+        it('should return empty string if git show fails with bad object HEAD', async () => {
+            const repoPath = '/test/repo';
+            const filePath = 'file.txt';
+            mockGit.show.mockRejectedValue(new Error('fatal: bad object HEAD'));
+
+            const result = await gitService.getFileContent(repoPath, filePath);
+            expect(result).toBe('');
+        });
+
+        it('should return empty string if git show fails with explicitly localized HEAD errors', async () => {
+            const repoPath = '/test/repo';
+            const filePath = 'file.txt';
+            mockGit.show.mockRejectedValue(new Error('fatal: nombre de objeto no válido HEAD'));
+
+            const result = await gitService.getFileContent(repoPath, filePath);
+            expect(result).toBe('');
+        });
+
+        it('should propagate other errors thrown by git show', async () => {
+            const repoPath = '/test/repo';
+            const filePath = 'file.txt';
+            const unexpectedError = new Error('fatal: path refers to uninitialized submodule');
+            mockGit.show.mockRejectedValue(unexpectedError);
+
+            await expect(gitService.getFileContent(repoPath, filePath)).rejects.toThrow(unexpectedError);
         });
     });
 });

@@ -49,7 +49,7 @@ function onBranchChange(event: Event) {
 .git-repo-item {
   padding: 10px;
   border-bottom: 1px solid var(--border-color);
-  background-color: var(--sidebar-bg);
+  background-color: var(--bg-secondary);
 }
 
 .git-repo-item__header {
@@ -62,7 +62,7 @@ function onBranchChange(event: Event) {
 .git-repo-item__title {
   font-weight: bold;
   font-size: 0.9em;
-  color: var(--text-color);
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -92,7 +92,7 @@ function onBranchChange(event: Event) {
 .git-repo-item__select {
   background: none;
   border: none;
-  color: var(--text-color);
+  color: var(--text-primary);
   font-size: 0.85em;
   width: 100%;
   cursor: pointer;
