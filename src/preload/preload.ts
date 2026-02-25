@@ -74,5 +74,9 @@ contextBridge.exposeInMainWorld('electron', {
   },
   ssl: {
     selectCertificateFile: () => ipcRenderer.invoke('fs:select-cert-file')
+  },
+  environment: {
+    load: (filePath: string, projectPath?: string) => ipcRenderer.invoke('environment:load', filePath, projectPath),
+    save: (filePath: string, env: any, projectPath?: string) => ipcRenderer.invoke('environment:save', filePath, env, projectPath),
   }
 })

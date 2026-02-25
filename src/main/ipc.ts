@@ -6,6 +6,7 @@ import { RequestExecutor } from '@/main/services/RequestExecutor';
 import { importService } from '@/main/services/ImportService';
 import { ProjectConfigService, mergeSSLConfigs } from '@/main/services/ProjectConfigService';
 import { makeRelativePath } from '@/main/utils/pathUtils';
+import { EnvironmentManager } from '@/main/services/EnvironmentManager';
 
 import { ExportService } from '@/main/services/ExportService';
 
@@ -13,6 +14,7 @@ const fsService = new FileSystemService();
 const requestExecutor = new RequestExecutor();
 const exportService = new ExportService();
 const projectConfigService = new ProjectConfigService();
+const environmentManager = new EnvironmentManager();
 
 export function setupIpc(mainWindow: BrowserWindow) {
     // ... existing handlers ...
@@ -248,5 +250,14 @@ export function setupIpc(mainWindow: BrowserWindow) {
 
     ipcMain.handle('import:detect-format', async (_, content: string) => {
         return importService.detectFormat(content);
+    });
+
+    // Environment Handlers (con soporte de encriptación)
+    ipcMain.handle('environment:load', async (_, filePath: string, projectPath?: string) => {
+        return environmentManager.loadEnvironment(filePath, projectPath);
+    });
+
+    ipcMain.handle('environment:save', async (_, filePath: string, env: any, projectPath?: string) => {
+        return environmentManager.saveEnvironment(filePath, env, projectPath);
     });
 }

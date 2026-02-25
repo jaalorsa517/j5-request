@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useEnvironmentStore } from '@/renderer/stores/environment';
 
 const store = useEnvironmentStore();
-const componentKey = ref(0);
 
-const selectedScope = ref<'globals' | 'environment'>('environment');
+const selectedScope = ref<'globals' | 'environment'>('globals');
 
-// If no active environment, default to globals
-watch(() => store.activeEnvironment, (val) => {
-    if (!val) selectedScope.value = 'globals';
-    else selectedScope.value = 'environment';
-}, { immediate: true });
+function setScope(scope: 'globals' | 'environment') {
+    selectedScope.value = scope;
+}
 
 const targetEnv = computed(() => {
     return selectedScope.value === 'globals' ? store.globals : store.activeEnvironment;
@@ -21,11 +18,41 @@ const newVarKey = ref('');
 const newVarValue = ref('');
 const newVarSecret = ref(false);
 
+function checkCollabSecretWarning(): boolean {
+    if (selectedScope.value === 'environment') {
+        const warned = localStorage.getItem('j5_notified_secret_collab');
+        if (!warned) {
+            alert(
+                '🔒 Modo Seguro Activado:\n\n' +
+                'Esta variable se encriptará de forma segura en disco.\n' +
+                'Se generará un archivo "environment.key" en la carpeta del proyecto para cifrarlo.\n\n' +
+                '⚠️ IMPORTANTE COLABORACIÓN:\n' +
+                '- Agrega "environment.key" a tu .gitignore (no lo subas al repo).\n' +
+                '- Comparte este archivo de manera segura con tu equipo para que puedan abrir el ambiente.'
+            );
+            localStorage.setItem('j5_notified_secret_collab', 'true');
+        }
+    }
+    return true; // Continuar siempre después del warning
+}
+
 function addVariable() {
     if (!newVarKey.value || !targetEnv.value) return;
 
+    // Warning al agregar variable secret en Globals
+    if (selectedScope.value === 'globals' && newVarSecret.value) {
+        const proceed = confirm(
+            '⚠️ Las variables tipo "Secret" en Globals NO se encriptan en disco.\n\n' +
+            'Los Globals están protegidos por permisos del sistema operativo, pero si necesitas ' +
+            'protección adicional, considera usar un Environment local del proyecto.\n\n' +
+            '¿Deseas continuar?'
+        );
+        if (!proceed) return;
+    } else if (newVarSecret.value) {
+        checkCollabSecretWarning();
+    }
+
     try {
-        console.log('Adding variable:', newVarKey.value, 'to', selectedScope.value);
         targetEnv.value.variables.push({
             key: newVarKey.value,
             value: newVarValue.value,
@@ -48,6 +75,27 @@ function removeVariable(index: number) {
     }
 }
 
+/**
+ * Muestra warning al cambiar tipo a 'secret' en Globals.
+ */
+function onTypeChange(variable: { key: string; value: string; type: 'default' | 'secret'; enabled: boolean }, newType: string) {
+    if (selectedScope.value === 'globals' && newType === 'secret') {
+        const proceed = confirm(
+            '⚠️ Las variables tipo "Secret" en Globals NO se encriptan.\n\n' +
+            'Considera usar un Environment local del proyecto para protección adicional.\n\n' +
+            '¿Continuar?'
+        );
+        if (!proceed) {
+            variable.type = 'default';
+            return;
+        }
+    } else if (newType === 'secret') {
+        checkCollabSecretWarning();
+    }
+    
+    variable.type = newType as 'default' | 'secret';
+}
+
 async function save() {
     // Auto-add pending variable if user forgot to click +
     if (newVarKey.value) {
@@ -56,13 +104,10 @@ async function save() {
 
     try {
         if (selectedScope.value === 'globals') {
-            console.log('Saving globals, count:', store.globals.variables.length);
             await store.saveGlobals();
         } else {
             if (!store.activeEnvironment) return; 
             await store.saveActiveEnvironment();
-            // Force re-render of the editor part to ensure fresh bindings
-            componentKey.value++;
         }
     } catch (e: any) {
         alert('Error saving: ' + e.message);
@@ -85,14 +130,14 @@ async function save() {
                     <div 
                         class="scope-item" 
                         :class="{ active: selectedScope === 'globals' }"
-                        @click="selectedScope = 'globals'"
+                        @click="setScope('globals')"
                     >
                         Globals
                     </div>
                      <div 
                         class="scope-item" 
                         :class="{ active: selectedScope === 'environment' }"
-                        @click="selectedScope = 'environment'"
+                        @click="setScope('environment')"
                     >
                         Active Env
                         <span v-if="store.activeEnvironment" class="env-badge">{{ store.activeEnvironment.name }}</span>
@@ -100,7 +145,7 @@ async function save() {
                     </div>
                 </div>
 
-                <!-- Content -->
+                    <!-- Content -->
                 <div class="envModal__content">
                     <!-- Environment Info (Name/Path) only for active env -->
                     <div v-if="selectedScope === 'environment' && !store.activeEnvironment" class="no-env">
@@ -108,9 +153,9 @@ async function save() {
                         <button @click="store.createNewEnvironment('New Environment')">Create New</button>
                     </div>
 
-                    <div v-else class="env-editor" :key="componentKey">
-                         <div class="env-info" v-if="selectedScope === 'environment'">
-                            <label>Name: <input v-model="store.activeEnvironment!.name" /></label>
+                    <div v-else class="env-editor">
+                         <div class="env-info" v-if="selectedScope === 'environment' && store.activeEnvironment">
+                            <label>Name: <input v-model="store.activeEnvironment.name" /></label>
                             <span v-if="store.activeEnvironmentPath" class="path">{{ store.activeEnvironmentPath }}</span>
                             <span v-else class="unsaved-badge">Unsaved</span>
                         </div>
@@ -138,9 +183,9 @@ async function save() {
                                      <input v-model="v.value" :type="v.type === 'secret' ? 'password' : 'text'" />
                                  </div>
                                  <div class="col-type">
-                                     <select v-model="v.type">
+                                     <select :value="v.type" @change="onTypeChange(v, ($event.target as HTMLSelectElement).value)">
                                          <option value="default">Default</option>
-                                         <option value="secret">Secret</option>
+                                         <option value="secret">Secret 🔒</option>
                                      </select>
                                  </div>
                                  <div class="col-actions">

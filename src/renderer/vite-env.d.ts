@@ -60,6 +60,10 @@ declare global {
                 toFile: (content: string, defaultName?: string) => Promise<string | null>;
                 generate: (request: Partial<J5Request> | J5Request[], format: string) => Promise<string>;
             };
+            environment: {
+                load: (filePath: string, projectPath?: string) => Promise<import('@/shared/types').J5Environment>;
+                save: (filePath: string, env: any, projectPath?: string) => Promise<void>;
+            };
         }
     }
 }

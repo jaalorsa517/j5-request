@@ -10,16 +10,29 @@ const mockFs = {
     saveFileDialog: vi.fn()
 };
 
+const mockEnv = {
+    load: vi.fn(),
+    save: vi.fn()
+};
+
 vi.stubGlobal('window', {
     electron: {
-        fs: mockFs
+        fs: mockFs,
+        environment: mockEnv
     },
     alert: vi.fn()
 });
 
+// Mock file-system store para obtener projectPath
+vi.mock('@/renderer/stores/file-system', () => ({
+    useFileSystemStore: () => ({
+        currentPath: '/mock/project'
+    })
+}));
+
 // Mock console to avoid noise and test errors
-vi.spyOn(console, 'error').mockImplementation(() => {});
-vi.spyOn(console, 'log').mockImplementation(() => {});
+vi.spyOn(console, 'error').mockImplementation(() => { });
+vi.spyOn(console, 'log').mockImplementation(() => { });
 
 describe('Environment Store', () => {
     beforeEach(() => {
@@ -73,7 +86,7 @@ describe('Environment Store', () => {
 
     it('should load environment from file', async () => {
         const store = useEnvironmentStore();
-        mockFs.readFile.mockResolvedValue({
+        mockEnv.load.mockResolvedValue({
             id: 'env1',
             name: 'Env 1',
             variables: [{ key: 'e1', value: 'v1', enabled: true }]
@@ -88,19 +101,19 @@ describe('Environment Store', () => {
 
     it('should handle invalid environment file format', async () => {
         const store = useEnvironmentStore();
-        mockFs.readFile.mockResolvedValue(null); // Invalid format
+        mockEnv.load.mockResolvedValue(null); // Invalid format
         await expect(store.loadEnvironmentFromFile('/path/to/env.json')).rejects.toThrow('Invalid environment file format');
     });
 
     it('should handle loadEnvironmentFromFile error', async () => {
         const store = useEnvironmentStore();
-        mockFs.readFile.mockRejectedValue(new Error('Read error'));
+        mockEnv.load.mockRejectedValue(new Error('Read error'));
         await expect(store.loadEnvironmentFromFile('/path/to/env.json')).rejects.toThrow('Read error');
     });
 
     it('should handle missing variables in loaded environment', async () => {
         const store = useEnvironmentStore();
-        mockFs.readFile.mockResolvedValue({ id: 'env1', name: 'Env 1' }); // missing variables array
+        mockEnv.load.mockResolvedValue({ id: 'env1', name: 'Env 1' }); // missing variables array
         await store.loadEnvironmentFromFile('/path/to/env.json');
         expect(store.activeEnvironment?.variables).toEqual([]);
     });
@@ -109,7 +122,8 @@ describe('Environment Store', () => {
         const store = useEnvironmentStore();
         store.createNewEnvironment('New Env');
         mockFs.saveFileDialog.mockResolvedValue('/path/to/new_env.json');
-        mockFs.readFile.mockResolvedValue({
+        mockEnv.save.mockResolvedValue(undefined);
+        mockEnv.load.mockResolvedValue({
             id: store.activeEnvironment!.id,
             name: 'New Env',
             variables: []
@@ -118,9 +132,10 @@ describe('Environment Store', () => {
         await store.saveActiveEnvironment();
 
         expect(mockFs.saveFileDialog).toHaveBeenCalled();
-        expect(mockFs.writeFile).toHaveBeenCalledWith(
+        expect(mockEnv.save).toHaveBeenCalledWith(
             '/path/to/new_env.json',
-            expect.objectContaining({ name: 'New Env' })
+            expect.objectContaining({ name: 'New Env' }),
+            '/mock/project'
         );
         expect(store.activeEnvironmentPath).toBe('/path/to/new_env.json');
     });
@@ -130,21 +145,23 @@ describe('Environment Store', () => {
         store.createNewEnvironment('New Env');
         mockFs.saveFileDialog.mockResolvedValue(null);
         await store.saveActiveEnvironment();
-        expect(mockFs.writeFile).not.toHaveBeenCalled();
+        expect(mockEnv.save).not.toHaveBeenCalled();
     });
 
     it('should save active environment (existing)', async () => {
         const store = useEnvironmentStore();
         store.activeEnvironment = { id: '1', name: 'Env', variables: [] };
         store.activeEnvironmentPath = '/path/to/env.json';
-        mockFs.readFile.mockResolvedValue(store.activeEnvironment);
+        mockEnv.save.mockResolvedValue(undefined);
+        mockEnv.load.mockResolvedValue(store.activeEnvironment);
 
         await store.saveActiveEnvironment();
 
         expect(mockFs.saveFileDialog).not.toHaveBeenCalled();
-        expect(mockFs.writeFile).toHaveBeenCalledWith(
+        expect(mockEnv.save).toHaveBeenCalledWith(
             '/path/to/env.json',
-            expect.objectContaining({ name: 'Env' })
+            expect.objectContaining({ name: 'Env' }),
+            '/mock/project'
         );
     });
 
@@ -164,9 +181,9 @@ describe('Environment Store', () => {
         const store = useEnvironmentStore();
         mockFs.writeFile.mockRejectedValue(new Error('Write error'));
         const alertSpy = vi.spyOn(window, 'alert');
-        
+
         await store.saveGlobals();
-        
+
         expect(alertSpy).toHaveBeenCalledWith('Error saving globals: Write error');
     });
 
@@ -244,8 +261,8 @@ describe('Environment Store', () => {
 
     it('handles corrupted environment files', async () => {
         const store = useEnvironmentStore();
-        mockFs.readFile.mockResolvedValueOnce({ name: 'Corrupted', variables: 'not an array' }); 
-        
+        mockEnv.load.mockResolvedValueOnce({ name: 'Corrupted', variables: 'not an array' });
+
         await store.loadEnvironmentFromFile('/path');
         expect(store.activeEnvironment?.variables).toEqual([]);
     });
@@ -254,9 +271,9 @@ describe('Environment Store', () => {
         const store = useEnvironmentStore();
         store.activeEnvironment = { id: '1', name: 'Env', variables: [] };
         store.activeEnvironmentPath = '/path/to/env.json';
-        
+
         store.closeEnvironment();
-        
+
         expect(store.activeEnvironment).toBeNull();
         expect(store.activeEnvironmentPath).toBeNull();
     });
@@ -265,15 +282,15 @@ describe('Environment Store', () => {
         const store = useEnvironmentStore();
         store.activeEnvironment = null;
         await store.saveActiveEnvironment();
-        expect(mockFs.writeFile).not.toHaveBeenCalled();
+        expect(mockEnv.save).not.toHaveBeenCalled();
     });
 
     it('handles error in saveActiveEnvironment', async () => {
         const store = useEnvironmentStore();
         store.activeEnvironment = { id: '1', name: 'Env', variables: [] };
         store.activeEnvironmentPath = '/path';
-        mockFs.writeFile.mockRejectedValue(new Error('fail'));
-        
+        mockEnv.save.mockRejectedValue(new Error('fail'));
+
         await expect(store.saveActiveEnvironment()).rejects.toThrow('fail');
     });
 
@@ -281,7 +298,7 @@ describe('Environment Store', () => {
         const store = useEnvironmentStore();
         store.createNewEnvironment('A');
         expect(store.activeEnvironment).toBeTruthy();
-        
+
         store.closeEnvironment();
         expect(store.activeEnvironment).toBeNull();
         // Internal selectedScope should have changed to globals (covered by watch)

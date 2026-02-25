@@ -35,14 +35,12 @@ export const useEnvironmentStore = defineStore('environment', () => {
 
     async function loadEnvironmentFromFile(path: string) {
         try {
-            // Use generic fs reader. Assuming J5Request type reuse or generic
-            // We need a way to read just json. 
-            // window.electron.fs.readFile returns J5Request in types, but implementation is generic parseJson?
-            // Let's verify readFile implementation. 
-            // In FileSystemService.ts, readFile returns parseJson<J5Request | any>(content). 
-            // So it just parses JSON.
+            // Obtener projectPath del file-system store para soporte de encriptación
+            const { useFileSystemStore } = await import('@/renderer/stores/file-system');
+            const fsStore = useFileSystemStore();
+            const projectPath = fsStore.currentPath ?? undefined;
 
-            const content = await window.electron.fs.readFile(path);
+            const content = await window.electron.environment.load(path, projectPath);
 
             // Deep clone to ensure mutability and avoid IPC readonly issues
             const clonedContent = JSON.parse(JSON.stringify(content));
@@ -58,8 +56,12 @@ export const useEnvironmentStore = defineStore('environment', () => {
             } else {
                 throw new Error('Invalid environment file format');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to load environment', error);
+            // Detectar errores de desencriptación y mostrar mensaje claro
+            if (error?.message?.includes('desencriptación') || error?.message?.includes('llave')) {
+                window.alert(`Error de encriptación: ${error.message}`);
+            }
             throw error;
         }
     }
@@ -70,19 +72,23 @@ export const useEnvironmentStore = defineStore('environment', () => {
         if (!activeEnvironmentPath.value) {
             // New environment: Prompt for save location
             const defaultName = (activeEnvironment.value.name || 'environment').toLowerCase().replace(/\s+/g, '_') + '.json';
-            // Use type assertion for saveFileDialog since we just added it to d.ts and it might not be picked up by IDE check yet if strictly checked
             const path = await window.electron.fs.saveFileDialog(defaultName);
             if (!path) return; // User cancelled
 
             activeEnvironmentPath.value = path;
         }
 
-        // Save
+        // Obtener projectPath del file-system store para soporte de encriptación
+        const { useFileSystemStore } = await import('@/renderer/stores/file-system');
+        const fsStore = useFileSystemStore();
+        const projectPath = fsStore.currentPath ?? undefined;
+
+        // Save usando el canal dedicado de environment (con encriptación automática)
         // Clone to plain object to remove Vue Proxies which cause "An object could not be cloned" IPC error
         const plainEnv = JSON.parse(JSON.stringify(activeEnvironment.value));
-        await window.electron.fs.writeFile(activeEnvironmentPath.value, plainEnv);
+        await window.electron.environment.save(activeEnvironmentPath.value, plainEnv, projectPath);
 
-        // Reload from disk to ensure fresh state and reactivity, as requested by user to fix input blocking
+        // Reload from disk to ensure fresh state and reactivity
         await loadEnvironmentFromFile(activeEnvironmentPath.value);
     }
 
