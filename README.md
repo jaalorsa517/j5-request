@@ -168,3 +168,46 @@ Todas las exportaciones pasan por validación automática:
 - **cURL**: Validación de escaping de shell
 - **Colecciones JSON**: Validación de estructura JSON
 - **OpenAPI**: Validación de campos requeridos y estructura del spec
+
+## Encriptación de Variables Secret
+
+J5-Request encripta automáticamente las variables de tipo `secret` en los environment files locales del proyecto, permitiendo versionarlos en Git sin exponer credentials sensibles.
+
+### Cómo Funciona
+
+- **Automático**: Al guardar un environment, las variables marcadas como `type: secret` se encriptan transparentemente.
+- **Transparente**: Al cargar un environment, los valores se desencriptan automáticamente para uso en la UI.
+- **Selective**: Solo se encriptan variables `secret`. Las variables `default` permanecen en texto plano.
+
+### Formato de Encriptación
+
+Los valores encriptados se almacenan inline en el JSON con formato autodescriptivo:
+
+```json
+{
+  "key": "API_KEY",
+  "value": "ENC[AES256_GCM:iv:<hex>:data:<hex>:tag:<hex>]",
+  "type": "secret",
+  "enabled": true
+}
+```
+
+### Gestión de Llaves
+
+- **Por proyecto**: Cada proyecto genera una llave de encriptación aleatoria de 256 bits la primera vez que se guarda una variable `secret`.
+- **Almacenamiento**: La llave se guarda en texto base64 en el archivo `environment.key` ubicado en la raíz del proyecto.
+- **Automático**: Al guardar la primera variable `secret`, se crea `environment.key` (si no existe) y se inyecta automáticamente en el `.gitignore` del proyecto.
+
+### ⚠️ Consideraciones Importantes
+
+| Situación | Impacto |
+|---|---|
+| **Mover el proyecto de ubicación** | Se genera una nueva llave basada en el nuevo path. Los secrets encriptados con la llave anterior **no podrán ser desencriptados**. Deberás recrear las variables secret. |
+| **Borrar `~/.j5request/globals.json`** | Se pierden todas las llaves de encriptación. Los secrets almacenados serán **irrecuperables**. Deberás recrear los valores desde las fuentes originales. |
+| **Variables secret en Globals** | Los Globals (`~/.j5request/globals.json`) **NO se encriptan**. Están protegidos por los permisos del sistema operativo. Si necesitas protección adicional, usa un Environment local del proyecto. |
+
+### Compatibilidad Hacia Atrás
+
+- Archivos existentes sin valores encriptados se cargan normalmente.
+- Al guardar, solo se encriptan las variables marcadas como `secret` a partir de ese momento.
+
