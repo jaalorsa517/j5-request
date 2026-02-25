@@ -103,16 +103,13 @@ async function handleOpenDiff(file: string, repoPath: string) {
         const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
         const absolutePath = `${repoPath}${separator}${file}`;
         
-        // Use fs.readFile which returns parsed JSON (J5Request) if json, or we might need raw text?
-        // Wait, fs.readFile in previous code returns `J5Request`. 
-        // But for diffing any file, we might want raw string.
-        // The current fs.readFile implementation parses JSON. 
-        // We might need a raw read. But for now let's use what we have and stringify if it's an object.
-        const content = await window.electron.fs.readFile(absolutePath);
+        // Use fs.readTextFile to read the raw string content without attempting to parse JSON.
+        const content = await window.electron.fs.readTextFile(absolutePath);
         
         if (typeof content === 'string') {
             diffModified.value = content;
         } else {
+            // Fallback just in case, though readTextFile should return strictly string.
             diffModified.value = JSON.stringify(content, null, 2);
         }
         

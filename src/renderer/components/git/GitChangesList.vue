@@ -89,10 +89,10 @@ const changes = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 10px;
-  background-color: var(--header-bg, #252526); /* Fallback color */
+  background-color: var(--bg-tertiary);
   font-size: 0.8em;
   font-weight: bold;
-  color: var(--text-color-subtle, #cccccc);
+  color: var(--text-secondary);
   text-transform: uppercase;
 }
 
@@ -124,11 +124,11 @@ const changes = computed(() => {
   padding: 4px 10px;
   cursor: pointer;
   font-size: 0.9em;
-  color: var(--text-color);
+  color: var(--text-primary);
 }
 
 .git-file-item:hover {
-  background-color: var(--hover-bg);
+  background-color: var(--bg-tertiary);
 }
 
 .git-file-item:hover .git-item-action {

@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
+import { useThemeStore } from '@/renderer/stores/theme'
 
 defineProps<{
   original: string
@@ -7,12 +9,18 @@ defineProps<{
   language?: string
 }>()
 
-const options = {
-  theme: 'vs-dark',
+const themeStore = useThemeStore()
+
+const editorTheme = computed(() => {
+    return themeStore.theme === 'dark' ? 'vs-dark' : 'vs'
+})
+
+const options = computed(() => ({
+  theme: editorTheme.value,
   automaticLayout: true,
   readOnly: true,
   minimap: { enabled: false }
-}
+}))
 </script>
 
 <template>
@@ -22,6 +30,7 @@ const options = {
       :modified="modified"
       :language="language"
       :options="options"
+      :theme="editorTheme"
       style="height: 100%; width: 100%"
     />
   </div>

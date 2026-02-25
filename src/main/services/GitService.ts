@@ -51,7 +51,17 @@ export class GitService {
 
     async unstage(repoPath: string, files: string[]): Promise<void> {
         const git = this.getGit(repoPath);
-        await git.reset(['HEAD', ...files]);
+        try {
+            await git.reset(['HEAD', ...files]);
+        } catch (error: any) {
+            const msg = error?.message?.toString?.()?.toLowerCase() ?? '';
+            if (msg.includes('head') || msg.includes('bad object') || msg.includes('invalid object') || msg.includes('no válido')) {
+                // If there are no commits yet, resetting against HEAD fails. We use rm --cached instead.
+                await git.rm(['--cached', ...files]);
+                return;
+            }
+            throw error;
+        }
     }
 
     async commit(repoPath: string, message: string): Promise<void> {
@@ -114,8 +124,17 @@ export class GitService {
         // filePath needs to be relative to repo root. 
         // If repoPath is absolute and filePath is absolute, we need to make it relative.
         const relativePath = path.isAbsolute(filePath) ? path.relative(repoPath, filePath) : filePath;
-
-        return await git.show([`${ref}:${relativePath}`]);
+        try {
+            return await git.show([`${ref}:${relativePath}`]);
+        } catch (error: any) {
+            const msg = error?.message?.toString?.()?.toLowerCase() ?? '';
+            // Catch english and localized (e.g. spanish "no válido") errors concerning HEAD
+            if (msg.includes('head') || msg.includes('bad object') || msg.includes('invalid object') || msg.includes('no válido')) {
+                // Repository has no commits yet or file not in HEAD; return empty content for HEAD
+                return '';
+            }
+            throw error;
+        }
     }
 }
 
