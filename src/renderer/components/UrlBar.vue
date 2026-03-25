@@ -104,32 +104,36 @@ function getRequestBody(): any {
 
 <template>
     <div class="urlBar">
-        <select v-model="requestStore.method" class="urlBar__methodSelector">
-            <option v-for="method in methods" :key="method" :value="method">
-                {{ method }}
-            </option>
-        </select>
-        <input
-            v-model="requestStore.url"
-            type="text"
-            class="urlBar__input"
-            placeholder="https://api.example.com/endpoint"
-        />
+        <div class="urlBar__container">
+            <select v-model="requestStore.method" class="urlBar__method" :class="`urlBar__method--${requestStore.method.toLowerCase()}`">
+                <option v-for="method in methods" :key="method" :value="method">
+                    {{ method }}
+                </option>
+            </select>
+            <input
+                v-model="requestStore.url"
+                type="text"
+                class="urlBar__input"
+                placeholder="https://api.example.com/endpoint"
+            />
+        </div>
         <div class="urlBar__actions">
             <button 
-                class="urlBar__button urlBar__button--primary" 
+                class="urlBar__btn urlBar__btn--primary" 
                 @click="sendRequest"
                 :disabled="!requestStore.url || requestStore.isLoading"
             >
-                {{ requestStore.isLoading ? 'Enviando...' : 'Enviar' }}
+                <span v-if="requestStore.isLoading">Enviando...</span>
+                <span v-else>✈️ Enviar</span>
             </button>
             <button 
                 ref="exportButtonRef"
-                class="urlBar__button urlBar__button--secondary"
+                class="urlBar__btn urlBar__btn--secondary"
                 @click="toggleExportMenu"
                 title="Exportar petición"
             >
-                Exportar ▾
+                <span>Exportar</span>
+                <span class="urlBar__btn-icon">▾</span>
             </button>
         </div>
 
@@ -153,40 +157,59 @@ function getRequestBody(): any {
 <style scoped>
 .urlBar {
     display: flex;
-    gap: 8px;
-    padding: 12px;
+    gap: 12px;
+    padding: 16px;
     background-color: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-subtle);
     width: 100%;
-    box-sizing: border-box;
     align-items: center;
 }
 
-.urlBar__methodSelector {
-    padding: 8px 12px;
+.urlBar__container {
+    flex: 1;
+    display: flex;
     background-color: var(--input-bg);
-    color: var(--text-primary);
-    border: 1px solid var(--input-border);
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    height: 36px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: all var(--transition-fast);
 }
+
+.urlBar__container:focus-within {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--accent-blue-soft);
+}
+
+.urlBar__method {
+    padding: 0 16px;
+    height: 38px;
+    background-color: var(--bg-tertiary);
+    border: none;
+    border-right: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    text-align: center;
+}
+
+.urlBar__method--get { color: var(--accent-green); }
+.urlBar__method--post { color: var(--accent-orange); }
+.urlBar__method--put { color: var(--accent-blue); }
+.urlBar__method--delete { color: var(--accent-red); }
 
 .urlBar__input {
     flex: 1;
-    padding: 8px 12px;
-    background-color: var(--input-bg);
-    color: var(--text-primary);
-    border: 1px solid var(--input-border);
-    border-radius: 4px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    height: 36px;
-    box-sizing: border-box;
+    border: none;
+    background: transparent;
+    height: 38px;
+    border-radius: 0;
 }
 
-.urlBar__input::placeholder {
-    color: var(--text-secondary);
+.urlBar__input:focus {
+    box-shadow: none;
 }
 
 .urlBar__actions {
@@ -194,41 +217,31 @@ function getRequestBody(): any {
     gap: 8px;
 }
 
-.urlBar__button {
-    padding: 0 16px;
-    height: 36px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 600;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.urlBar__btn {
+    height: 40px;
     white-space: nowrap;
 }
 
-.urlBar__button--primary {
-    background-color: var(--accent-color);
-    color: var(--text-inverse);
+.urlBar__btn--primary {
+    background-color: var(--accent-blue);
+    color: #ffffff;
+    border: none;
+    min-width: 100px;
 }
 
-.urlBar__button--primary:hover:not(:disabled) {
-    background-color: var(--accent-hover);
+.urlBar__btn--primary:hover:not(:disabled) {
+    background-color: #2563eb;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
-.urlBar__button--secondary {
-    background-color: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
+.urlBar__btn--secondary {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
 }
 
-.urlBar__button--secondary:hover {
-    background-color: var(--bg-secondary);
-}
-
-.urlBar__button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+.urlBar__btn-icon {
+    font-size: 10px;
+    margin-left: 4px;
 }
 </style>
+

@@ -107,6 +107,10 @@ export const useEnvironmentStore = defineStore('environment', () => {
     }
 
     async function loadGlobals() {
+        if (!window.electron) {
+            console.warn('Electron API not available');
+            return;
+        }
         try {
             const globalsPath = await window.electron.fs.getGlobalsPath();
 
