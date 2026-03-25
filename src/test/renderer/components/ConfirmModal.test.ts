@@ -10,22 +10,22 @@ describe('ConfirmModal', () => {
         const wrapper = mount(ConfirmModal, {
             props: {
                 isOpen: true,
-                title: 'Confirm',
-                message: 'Are you sure?',
-                confirmText: 'Yes'
+                title: 'Confirmar',
+                message: '¿Estás seguro?',
+                confirmText: 'Sí'
             }
         });
-        expect(wrapper.find('.modal').exists()).toBe(true);
-        expect(wrapper.text()).toContain('Confirm');
-        expect(wrapper.text()).toContain('Are you sure?');
-        expect(wrapper.text()).toContain('Yes');
+        expect(wrapper.find('.confirmModal').exists()).toBe(true);
+        expect(wrapper.text()).toContain('Confirmar');
+        expect(wrapper.text()).toContain('¿Estás seguro?');
+        expect(wrapper.text()).toContain('Sí');
     });
 
     it('does not render when closed', () => {
         const wrapper = mount(ConfirmModal, {
             props: {
                 isOpen: false,
-                title: 'Confirm',
+                title: 'Confirmar',
                 message: 'Msg'
             }
         });
@@ -37,13 +37,13 @@ describe('ConfirmModal', () => {
         const wrapper = mount(ConfirmModal, {
             props: {
                 isOpen: true,
-                title: 'Confirm',
+                title: 'Confirmar',
                 message: 'Msg'
             }
         });
         // Find confirm button
-        // Default is btn--primary
-        await wrapper.find('.btn--primary').trigger('click');
+        // Default is confirmModal__btn--primary
+        await wrapper.find('.confirmModal__btn--primary').trigger('click');
         expect(wrapper.emitted('confirm')).toBeTruthy();
     });
 
@@ -51,11 +51,12 @@ describe('ConfirmModal', () => {
         const wrapper = mount(ConfirmModal, {
             props: {
                 isOpen: true,
-                title: 'Confirm',
+                title: 'Confirmar',
                 message: 'Msg'
             }
         });
-        await wrapper.find('.btn--secondary').trigger('click');
+        // Cancel button is the first confirmModal__btn
+        await wrapper.find('.confirmModal__btn').trigger('click');
         expect(wrapper.emitted('cancel')).toBeTruthy();
     });
 });

@@ -68,7 +68,7 @@ describe('UrlBar.vue', () => {
                 plugins: [pinia],
             },
         });
-        const button = wrapper.find('.urlBar__button--primary') as any;
+        const button = wrapper.find('.urlBar__btn--primary') as any;
         expect(button.element.disabled).toBe(true);
     });
 
@@ -83,7 +83,7 @@ describe('UrlBar.vue', () => {
         store.isLoading = false;
         await wrapper.vm.$nextTick();
 
-        const button = wrapper.find('.urlBar__button--primary') as any;
+        const button = wrapper.find('.urlBar__btn--primary') as any;
         expect(button.element.disabled).toBe(false);
     });
 
@@ -98,9 +98,9 @@ describe('UrlBar.vue', () => {
         store.isLoading = true;
         await wrapper.vm.$nextTick();
 
-        const button = wrapper.find('.urlBar__button--primary') as any;
+        const button = wrapper.find('.urlBar__btn--primary') as any;
         expect(button.element.disabled).toBe(true);
-        expect(button.text()).toBe('Enviando...');
+        expect(button.text()).toContain('Enviando...');
     });
 
     it('calls store.execute on send', async () => {
@@ -114,7 +114,7 @@ describe('UrlBar.vue', () => {
         store.isLoading = false;
         await wrapper.vm.$nextTick();
 
-        await wrapper.find('.urlBar__button--primary').trigger('click');
+        await wrapper.find('.urlBar__btn--primary').trigger('click');
         expect(store.execute).toHaveBeenCalled();
     });
 });

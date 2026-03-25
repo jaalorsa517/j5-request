@@ -305,17 +305,17 @@ async function confirmDelete() {
         <!-- Modal -->
         <div v-if="showNewRequestModal" class="mainLayout__modalOverlay">
             <div class="mainLayout__modal">
-                <h3 class="mainLayout__modalTitle">New Request</h3>
+                <h3 class="mainLayout__modalTitle">Nueva Petición</h3>
                 <input
                     v-model="newRequestName"
                     class="mainLayout__modalInput"
-                    placeholder="Request Name"
+                    placeholder="Nombre de la petición"
                     autofocus
                     @keyup.enter="confirmCreateRequest"
                 />
                 <div class="mainLayout__modalActions">
-                    <button @click="showNewRequestModal = false">Cancel</button>
-                    <button @click="confirmCreateRequest">Create</button>
+                    <button @click="showNewRequestModal = false">Cancelar</button>
+                    <button @click="confirmCreateRequest">Crear</button>
                 </div>
             </div>
         </div>

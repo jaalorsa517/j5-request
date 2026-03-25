@@ -6,7 +6,7 @@ describe('CryptoService', () => {
 
     describe('encrypt() y decrypt()', () => {
         it('should encrypt and decrypt round-trip successfully', () => {
-            const key = service.generateProjectKey('/test/project');
+            const key = service.generateRandomKey();
             const plaintext = 'my-secret-api-key-12345';
 
             const encrypted = service.encrypt(plaintext, key);
@@ -17,7 +17,7 @@ describe('CryptoService', () => {
         });
 
         it('should produce different ciphertexts for same plaintext (random IV)', () => {
-            const key = service.generateProjectKey('/test/project');
+            const key = service.generateRandomKey();
             const plaintext = 'same-value';
 
             const enc1 = service.encrypt(plaintext, key);
@@ -27,14 +27,14 @@ describe('CryptoService', () => {
         });
 
         it('should handle empty string', () => {
-            const key = service.generateProjectKey('/test/project');
+            const key = service.generateRandomKey();
             const encrypted = service.encrypt('', key);
             const decrypted = service.decrypt(encrypted, key);
             expect(decrypted).toBe('');
         });
 
         it('should handle special characters and unicode', () => {
-            const key = service.generateProjectKey('/test/project');
+            const key = service.generateRandomKey();
             const plaintext = '¡Hola! 🔑 contraseña@#$%^&*()';
             const encrypted = service.encrypt(plaintext, key);
             const decrypted = service.decrypt(encrypted, key);
@@ -42,20 +42,20 @@ describe('CryptoService', () => {
         });
 
         it('should fail to decrypt with wrong key', () => {
-            const key1 = service.generateProjectKey('/project/A');
-            const key2 = service.generateProjectKey('/project/B');
+            const key1 = service.generateRandomKey();
+            const key2 = service.generateRandomKey();
             const encrypted = service.encrypt('secret', key1);
 
             expect(() => service.decrypt(encrypted, key2)).toThrow();
         });
 
         it('should throw on invalid encrypted format', () => {
-            const key = service.generateProjectKey('/test');
+            const key = service.generateRandomKey();
             expect(() => service.decrypt('not-encrypted', key)).toThrow('Formato de valor encriptado inválido');
         });
 
         it('should throw on corrupted encrypted value', () => {
-            const key = service.generateProjectKey('/test');
+            const key = service.generateRandomKey();
             const corrupted = 'ENC[AES256_GCM:iv:00:data:ff:tag:00]';
             expect(() => service.decrypt(corrupted, key)).toThrow();
         });
@@ -85,38 +85,16 @@ describe('CryptoService', () => {
         });
     });
 
-    describe('generateProjectKey()', () => {
-        it('should be deterministic (same path → same key)', () => {
-            const key1 = service.generateProjectKey('/home/user/project');
-            const key2 = service.generateProjectKey('/home/user/project');
-            expect(key1.equals(key2)).toBe(true);
-        });
-
-        it('should produce different keys for different paths', () => {
-            const key1 = service.generateProjectKey('/project/A');
-            const key2 = service.generateProjectKey('/project/B');
+    describe('generateRandomKey()', () => {
+        it('should produce different keys each time', () => {
+            const key1 = service.generateRandomKey();
+            const key2 = service.generateRandomKey();
             expect(key1.equals(key2)).toBe(false);
         });
 
         it('should produce 32-byte keys (256 bits)', () => {
-            const key = service.generateProjectKey('/test');
+            const key = service.generateRandomKey();
             expect(key.length).toBe(32);
-        });
-    });
-
-    describe('obfuscateKey() y deobfuscateKey()', () => {
-        it('should round-trip successfully', () => {
-            const key = service.generateProjectKey('/test/project');
-            const obfuscated = service.obfuscateKey(key);
-            const recovered = service.deobfuscateKey(obfuscated);
-            expect(recovered.equals(key)).toBe(true);
-        });
-
-        it('should produce different output than plain base64', () => {
-            const key = service.generateProjectKey('/test');
-            const obfuscated = service.obfuscateKey(key);
-            const plainBase64 = key.toString('base64');
-            expect(obfuscated).not.toBe(plainBase64);
         });
     });
 
