@@ -16,7 +16,7 @@ const emit = defineEmits<{
 
 <template>
     <div v-if="isOpen" class="confirmModal" @click.self="emit('cancel')">
-        <div class="confirmMogemini cli dal__content">
+        <div class="confirmModal__content">
             <h3 class="confirmModal__title">{{ title }}</h3>
             <p class="confirmModal__message">{{ message }}</p>
             <div class="confirmModal__actions">
