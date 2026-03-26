@@ -199,36 +199,37 @@ function close() {
             <span class="importModal__confidence">({{ Math.round(formatConfidence * 100) }}% confianza)</span>
           </div>
 
-          <button
-            class="importModal__button importModal__button--primary"
-            :disabled="isImporting || !pasteContent.trim()"
-            @click="importFromPaste"
-          >
-            {{ isImporting ? 'Importando...' : 'Importar' }}
-          </button>
+          <div class="importModal__actions">
+            <button
+              class="importModal__button importModal__button--primary importModal__button--full"
+              :disabled="isImporting || !pasteContent.trim()"
+              @click="importFromPaste"
+            >
+              {{ isImporting ? 'Importando...' : 'Importar' }}
+            </button>
+          </div>
         </div>
 
         <!-- Tab: Archivo -->
         <div v-if="activeTab === 'file'" class="importModal__tabContent">
           <div class="importModal__filePicker">
             <button
-              class="importModal__button"
+              class="importModal__button importModal__button--full"
               @click="selectFile"
             >
-              Seleccionar Archivo
+              {{ selectedFile ? 'Seleccionado: ' + selectedFile : 'Seleccionar Archivo' }}
             </button>
-            <span v-if="selectedFile" class="importModal__fileName">
-              {{ selectedFile }}
-            </span>
           </div>
 
-          <button
-            class="importModal__button importModal__button--primary"
-            :disabled="isImporting || !selectedFile"
-            @click="importFromFile"
-          >
-            {{ isImporting ? 'Importando...' : 'Importar' }}
-          </button>
+          <div class="importModal__actions">
+            <button
+              class="importModal__button importModal__button--primary importModal__button--full"
+              :disabled="isImporting || !selectedFile"
+              @click="importFromFile"
+            >
+              {{ isImporting ? 'Importando...' : 'Importar' }}
+            </button>
+          </div>
         </div>
 
         <!-- Selector manual de formato -->
@@ -415,9 +416,14 @@ function close() {
   gap: 12px;
 }
 
-.importModal__fileName {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+.importModal__actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.importModal__button--full {
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -509,17 +515,17 @@ function close() {
 
 .importModal__button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.1);
-  border-color: var(--color-primary);
+  border-color: var(--brand-primary);
 }
 
 .importModal__button--primary {
-  background: var(--color-primary);
+  background: var(--brand-primary);
   color: white;
-  border-color: var(--color-primary);
+  border-color: var(--brand-primary);
 }
 
 .importModal__button--primary:hover:not(:disabled) {
-  background: var(--color-primary-dark);
+  background: var(--brand-secondary);
 }
 
 .importModal__button:disabled {

@@ -96,7 +96,7 @@ const emit = defineEmits<{
 }
 
 .confirmModal__btn--primary:hover {
-    background-color: #2563eb;
+    background-color: var(--brand-secondary);
 }
 
 .confirmModal__btn--danger {

@@ -8,8 +8,13 @@
   --cloud: #d4d4d8;
   --mist: #71717a;
 
-  --accent-blue: #3b82f6;
-  --accent-blue-soft: rgba(59, 130, 246, 0.15);
+  /* J5-Request Brand Colors */
+  --brand-primary: #008937;
+  --brand-secondary: #8dc124;
+  --brand-tertiary: #438c40;
+
+  --accent-blue: var(--brand-primary);
+  --accent-blue-soft: rgba(0, 137, 55, 0.15);
   --accent-green: #10b981;
   --accent-red: #ef4444;
   --accent-orange: #f59e0b;
@@ -80,7 +85,7 @@
   --border-subtle: rgba(0, 0, 0, 0.08);
   --border-standard: rgba(0, 0, 0, 0.12);
   
-  --accent-blue-soft: rgba(59, 130, 246, 0.1);
+  --accent-blue-soft: rgba(0, 137, 55, 0.1);
 
   color-scheme: light;
 }
@@ -88,6 +93,12 @@
 
 * {
   box-sizing: border-box;
+  accent-color: var(--brand-primary);
+}
+
+::selection {
+  background-color: var(--accent-blue-soft);
+  color: var(--brand-primary);
 }
 
 body {
@@ -143,8 +154,8 @@ button.primary {
 }
 
 button.primary:hover:not(:disabled) {
-  background-color: #2563eb;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+  background-color: var(--brand-secondary);
+  box-shadow: 0 4px 12px var(--accent-blue-soft);
 }
 
 input, select, textarea {

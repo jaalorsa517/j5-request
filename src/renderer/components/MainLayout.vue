@@ -16,7 +16,7 @@ import { useFileSystemStore } from '@/renderer/stores/file-system';
 import { useRequestStore } from '@/renderer/stores/request';
 import { useEnvironmentStore } from '@/renderer/stores/environment';
 import { useThemeStore } from '@/renderer/stores/theme';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 const store = useFileSystemStore();
 const requestStore = useRequestStore();
@@ -199,6 +199,44 @@ async function confirmDelete() {
         }
     }
 }
+
+function handleGlobalKeydown(e: KeyboardEvent) {
+    const isCtrlCmd = e.ctrlKey || e.metaKey;
+
+    if (e.key === 'Escape') {
+        if (showNewRequestModal.value) showNewRequestModal.value = false;
+        if (showImportModal.value) showImportModal.value = false;
+        if (showExportDialog.value) showExportDialog.value = false;
+        if (envStore.showManager) envStore.showManager = false;
+        if (showDeleteConfirm.value) showDeleteConfirm.value = false;
+        if (showDiff.value) closeDiff();
+    }
+
+    if (isCtrlCmd && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        requestStore.addTab();
+    }
+
+    if (isCtrlCmd && e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        if (requestStore.activeTabId) {
+            requestStore.closeTab(requestStore.activeTabId);
+        }
+    }
+
+    if (isCtrlCmd && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        saveRequest();
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('keydown', handleGlobalKeydown);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleGlobalKeydown);
+});
 </script>
 
 <template>
@@ -315,7 +353,7 @@ async function confirmDelete() {
                 />
                 <div class="mainLayout__modalActions">
                     <button @click="showNewRequestModal = false">Cancelar</button>
-                    <button @click="confirmCreateRequest">Crear</button>
+                    <button class="primary" @click="confirmCreateRequest">Crear</button>
                 </div>
             </div>
         </div>

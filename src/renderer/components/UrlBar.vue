@@ -230,8 +230,8 @@ function getRequestBody(): any {
 }
 
 .urlBar__btn--primary:hover:not(:disabled) {
-    background-color: #2563eb;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+    background-color: var(--brand-secondary);
+    box-shadow: 0 4px 12px var(--accent-blue-soft);
 }
 
 .urlBar__btn--secondary {
