@@ -1,8 +1,10 @@
-1. Descripción del Proyecto
+# 1. Descripción del Proyecto
 
 J5-request es un cliente de consumo de APIs multiplataforma, construido con Electron, Vue y TypeScript, diseñado bajo la filosofía de "API-as-Code". A diferencia de los clientes tradicionales que dependen de nubes propietarias o formatos de archivo gigantes e ilegibles, J5-request descompone las colecciones en archivos individuales, minimalistas y altamente legibles por humanos.
 
 La aplicación está pensada para equipos de desarrollo que ya utilizan Git como su única fuente de verdad, permitiendo que la documentación y las pruebas de la API vivan, se versionen y se fusionen dentro del mismo repositorio del código fuente, sin necesidad de cuentas externas ni sincronizaciones en la nube.
+
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue.svg?style=for-the-badge&logo=paypal)](https://paypal.me/jaalorsa)
 
 2. Objetivo General
 
