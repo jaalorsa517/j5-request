@@ -15,17 +15,17 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div v-if="isOpen" class="modal-overlay" @click.self="emit('cancel')">
-        <div class="modal">
-            <h3 class="modal__title">{{ title }}</h3>
-            <p class="modal__message">{{ message }}</p>
-            <div class="modal__actions">
-                <button class="btn btn--secondary" @click="emit('cancel')">
+    <div v-if="isOpen" class="confirmModal" @click.self="emit('cancel')">
+        <div class="confirmModal__content">
+            <h3 class="confirmModal__title">{{ title }}</h3>
+            <p class="confirmModal__message">{{ message }}</p>
+            <div class="confirmModal__actions">
+                <button class="confirmModal__btn" @click="emit('cancel')">
                     {{ cancelText || 'Cancelar' }}
                 </button>
                 <button 
-                    class="btn" 
-                    :class="danger ? 'btn--danger' : 'btn--primary'" 
+                    class="confirmModal__btn" 
+                    :class="danger ? 'confirmModal__btn--danger' : 'confirmModal__btn--primary'" 
                     @click="emit('confirm')"
                 >
                     {{ confirmText || 'Confirmar' }}
@@ -36,87 +36,77 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-.modal-overlay {
+.confirmModal {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-overlay);
+    backdrop-filter: blur(8px);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 2000;
-    backdrop-filter: blur(2px);
 }
 
-.modal {
-    background: var(--bg-modal, #252526);
-    border: 1px solid var(--border-color, #383838);
-    border-radius: 6px;
-    padding: 20px;
-    min-width: 350px;
-    max-width: 500px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    color: var(--text-primary, #ffffff);
+.confirmModal__content {
+    background: var(--bg-modal);
+    padding: 24px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-standard);
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.modal__title {
-    margin-top: 0;
-    margin-bottom: 12px;
-    font-size: 16px;
+.confirmModal__title {
+    margin: 0;
+    font-size: 1.1rem;
     font-weight: 600;
+    color: var(--text-primary);
 }
 
-.modal__message {
-    margin-bottom: 24px;
+.confirmModal__message {
+    margin: 0;
     font-size: 14px;
-    line-height: 1.5;
-    color: var(--text-secondary, #cccccc);
-    word-break: break-word;
+    line-height: 1.6;
+    color: var(--text-secondary);
 }
 
-.modal__actions {
+.confirmModal__actions {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
+    margin-top: 8px;
 }
 
-.btn {
+.confirmModal__btn {
     padding: 8px 16px;
-    border-radius: 4px;
+    font-size: 14px;
+}
+
+.confirmModal__btn--primary {
+    background-color: var(--accent-blue);
+    color: #ffffff;
     border: none;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 13px;
-    transition: background 0.2s;
 }
 
-.btn--secondary {
-    background: var(--bg-secondary, #333333);
-    color: var(--text-primary, #ffffff);
-    border: 1px solid var(--border-color, #454545);
+.confirmModal__btn--primary:hover {
+    background-color: var(--brand-secondary);
 }
 
-.btn--secondary:hover {
-    background: var(--bg-hover, #3e3e42);
-}
-
-.btn--primary {
-    background: var(--accent-color, #007acc);
+.confirmModal__btn--danger {
+    background-color: var(--error);
     color: #ffffff;
+    border: none;
 }
 
-.btn--primary:hover {
-    filter: brightness(1.1);
-}
-
-.btn--danger {
-    background: #d32f2f;
-    color: #ffffff;
-}
-
-.btn--danger:hover {
-    background: #b71c1c;
+.confirmModal__btn--danger:hover {
+    background-color: #dc2626;
 }
 </style>
+

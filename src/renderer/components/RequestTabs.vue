@@ -68,34 +68,42 @@ const activeTab = ref<Tab>('body');
 
 .requestTabs__header {
     display: flex;
-    gap: 4px;
-    padding: 8px 12px;
+    gap: 8px;
+    padding: 0 16px;
     background-color: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-subtle);
+    height: 40px;
+    align-items: center;
 }
 
 .requestTabs__tab {
-    padding: 6px 16px;
+    height: 100%;
+    padding: 0 12px;
     background-color: transparent;
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     border: none;
     border-bottom: 2px solid transparent;
+    border-radius: 0;
     cursor: pointer;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    transition: all 0.2s;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all var(--transition-fast);
 }
 
-.requestTabs__tab:hover {
-    color: var(--text-primary);
+.requestTabs__tab:hover:not(.requestTabs__tab--active) {
+    color: var(--text-secondary);
+    background-color: var(--bg-tertiary);
 }
 
 .requestTabs__tab--active {
-    color: var(--text-primary);
-    border-bottom-color: var(--accent-color);
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
 }
 
 .requestTabs__content {
     flex: 1;
     overflow: auto;
+    background-color: var(--bg-primary);
 }
 </style>
+

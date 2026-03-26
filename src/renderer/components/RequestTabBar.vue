@@ -27,14 +27,16 @@ function handleNewTab() {
             @click="handleTabClick(tab.id)"
             :title="tab.name || 'Sin Título'"
         >
-            <span class="requestTabBar__label">
+            <div class="requestTabBar__label">
                 <span class="method-badge" :class="tab.request.method.toLowerCase()">{{ tab.request.method }}</span>
-                {{ tab.name || 'Sin Título' }}
+                <span class="tab-name">{{ tab.name || 'Sin Título' }}</span>
                 <span v-if="tab.isDirty" class="dirty-marker">●</span>
-            </span>
-            <button class="requestTabBar__close" @click="handleCloseTab($event, tab.id)">×</button>
+            </div>
+            <button class="requestTabBar__close" @click="handleCloseTab($event, tab.id)" aria-label="Cerrar pestaña">×</button>
         </div>
-        <button class="requestTabBar__new" @click="handleNewTab" title="Nueva Pestaña">+</button>
+        <button class="requestTabBar__new" @click="handleNewTab" title="Nueva Pestaña">
+            <span>+</span>
+        </button>
     </div>
 </template>
 
@@ -43,44 +45,51 @@ function handleNewTab() {
     display: flex;
     flex-direction: row;
     background-color: var(--bg-secondary);
-    height: 35px;
+    height: 40px;
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: thin;
-    border-bottom: 1px solid var(--border-color);
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0 4px;
+    align-items: flex-end;
 }
 
 .requestTabBar::-webkit-scrollbar {
-    height: 4px;
-}
-
-.requestTabBar::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
+    display: none;
 }
 
 .requestTabBar__tab {
     display: flex;
     align-items: center;
-    padding: 0 10px;
-    min-width: 120px;
-    max-width: 200px;
+    padding: 0 12px;
+    height: 34px;
+    min-width: 140px;
+    max-width: 220px;
     background-color: var(--bg-tertiary);
-    color: var(--text-secondary);
-    border-right: 1px solid var(--border-color);
+    color: var(--text-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-bottom: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
     cursor: pointer;
     user-select: none;
     font-size: 13px;
-    position: relative;
+    margin-right: 2px;
+    transition: all var(--transition-fast);
 }
 
 .requestTabBar__tab:hover {
-    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    background-color: var(--steel);
 }
 
 .requestTabBar__tab--active {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    border-top: 1px solid var(--accent-color);
+    height: 36px;
+    border-color: var(--border-standard);
+    border-bottom: 1px solid var(--bg-primary);
+    margin-bottom: -1px;
+    z-index: 10;
 }
 
 .requestTabBar__label {
@@ -90,45 +99,46 @@ function handleNewTab() {
     text-overflow: ellipsis;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+}
+
+.tab-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .method-badge {
-    font-size: 0.7em;
-    font-weight: bold;
-    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 800;
     opacity: 0.8;
-    min-width: 24px;
+    min-width: 28px;
 }
 
-/* Method colors might need to be variables too for full theming support, keeping hardcoded for now as they are usually consistent */
-.method-badge.get { color: #6aca4b; }
-.method-badge.post { color: #f9c74f; }
-.method-badge.put { color: #4facfe; }
-.method-badge.delete { color: #f94144; }
-.method-badge.patch { color: #a67aff; }
+.method-badge.get { color: var(--accent-green); }
+.method-badge.post { color: var(--accent-orange); }
+.method-badge.put { color: var(--accent-blue); }
+.method-badge.delete { color: var(--accent-red); }
 
 .dirty-marker {
-    font-size: 0.8em;
-    color: var(--text-primary);
-    margin-left: 4px;
+    font-size: 10px;
+    color: var(--accent-blue);
 }
 
 .requestTabBar__close {
     background: none;
     border: none;
-    color: var(--text-secondary);
-    font-size: 16px;
-    margin-left: 6px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    margin-left: 8px;
     cursor: pointer;
-    border-radius: 4px;
-    width: 20px;
-    height: 20px;
+    border-radius: var(--radius-sm);
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.2s, background-color 0.2s;
+    transition: all var(--transition-fast);
 }
 
 .requestTabBar__tab:hover .requestTabBar__close,
@@ -137,23 +147,28 @@ function handleNewTab() {
 }
 
 .requestTabBar__close:hover {
-    background-color: var(--border-color);
+    background-color: var(--border-standard);
     color: var(--text-primary);
 }
 
 .requestTabBar__new {
     background: none;
     border: none;
-    color: var(--text-secondary);
-    font-size: 18px;
-    padding: 0 10px;
+    color: var(--text-tertiary);
+    width: 32px;
+    height: 32px;
+    margin-bottom: 4px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
 }
 
 .requestTabBar__new:hover {
     background-color: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 </style>
+

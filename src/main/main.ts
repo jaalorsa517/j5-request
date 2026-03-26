@@ -60,11 +60,16 @@ function createWorker() {
 
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
+      devTools: false
     },
   })
+  
+  win.removeMenu()
+
 
   // Test active push message to Renderer-process.
   win.webContents.on('did-finish-load', () => {

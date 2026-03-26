@@ -16,7 +16,7 @@ import { useFileSystemStore } from '@/renderer/stores/file-system';
 import { useRequestStore } from '@/renderer/stores/request';
 import { useEnvironmentStore } from '@/renderer/stores/environment';
 import { useThemeStore } from '@/renderer/stores/theme';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 const store = useFileSystemStore();
 const requestStore = useRequestStore();
@@ -199,71 +199,117 @@ async function confirmDelete() {
         }
     }
 }
+
+function handleGlobalKeydown(e: KeyboardEvent) {
+    const isCtrlCmd = e.ctrlKey || e.metaKey;
+
+    if (e.key === 'Escape') {
+        if (showNewRequestModal.value) showNewRequestModal.value = false;
+        if (showImportModal.value) showImportModal.value = false;
+        if (showExportDialog.value) showExportDialog.value = false;
+        if (envStore.showManager) envStore.showManager = false;
+        if (showDeleteConfirm.value) showDeleteConfirm.value = false;
+        if (showDiff.value) closeDiff();
+    }
+
+    if (isCtrlCmd && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        requestStore.addTab();
+    }
+
+    if (isCtrlCmd && e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        if (requestStore.activeTabId) {
+            requestStore.closeTab(requestStore.activeTabId);
+        }
+    }
+
+    if (isCtrlCmd && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        saveRequest();
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('keydown', handleGlobalKeydown);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleGlobalKeydown);
+});
 </script>
 
 <template>
     <div class="mainLayout">
         <!-- Activity Bar -->
-        <div class="activityBar">
-            <button 
-                class="activityBar__item" 
-                :class="{ active: activeActivity === 'explorer' }"
-                @click="activeActivity = 'explorer'; closeDiff()"
-                title="Explorer"
-            >
-                📁
-            </button>
-             <button 
-                class="activityBar__item" 
-                :class="{ active: activeActivity === 'git' }"
-                @click="activeActivity = 'git'"
-                title="Source Control"
-            >
-                🌲
-            </button>
-            <div style="flex: 1;"></div>
-            <button
-                class="activityBar__item theme-toggle"
-                @click="themeStore.toggleTheme()"
-                title="Toggle Theme"
-            >
-                {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
-            </button>
-        </div>
-
-        <!-- Sidebar -->
-        <aside class="mainLayout__sidebar">
-            <div class="mainLayout__sidebarHeader" v-if="activeActivity === 'explorer'">
-                <div style="margin-bottom: 8px;">
-                     <EnvironmentSelector />
-                </div>
-                <button class="mainLayout__actionButton" @click="openFolder">
-                    📂 Open
-                </button>
-                <button
-                    class="mainLayout__actionButton"
-                    :disabled="!store.currentPath"
-                    @click="openCreateModal"
+        <nav class="mainLayout__activityBar activityBar">
+            <div class="activityBar__top">
+                <button 
+                    class="activityBar__item" 
+                    :class="{ 'activityBar__item--active': activeActivity === 'explorer' }"
+                    @click="activeActivity = 'explorer'; closeDiff()"
+                    title="Explorador"
                 >
-                    ➕ New
+                    <span class="activityBar__icon">📁</span>
                 </button>
-                <button
-                    class="mainLayout__actionButton mainLayout__actionButton--save"
-                    :class="{ 'mainLayout__actionButton--dirty': requestStore.isDirty }"
-                    :disabled="!store.selectedFile"
-                    @click="saveRequest"
+                <button 
+                    class="activityBar__item" 
+                    :class="{ 'activityBar__item--active': activeActivity === 'git' }"
+                    @click="activeActivity = 'git'"
+                    title="Control de Código"
                 >
-                    {{ requestStore.isDirty ? '● ' : '' }}💾 Save
-                </button>
-                <button
-                    class="mainLayout__actionButton"
-                    @click="openImportModal"
-                >
-                    📥 Import
+                    <span class="activityBar__icon">🌲</span>
                 </button>
             </div>
+            <div class="activityBar__bottom">
+                <button
+                    class="activityBar__item activityBar__item--theme"
+                    @click="themeStore.toggleTheme()"
+                    title="Cambiar Tema"
+                >
+                    {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
+                </button>
+            </div>
+        </nav>
+
+        <!-- Sidebar -->
+        <aside class="mainLayout__sidebar sidebar">
+            <div class="sidebar__header" v-if="activeActivity === 'explorer'">
+                <div class="sidebar__controls">
+                     <EnvironmentSelector />
+                </div>
+                <div class="sidebar__toolbar">
+                    <button class="sidebar__btn" @click="openFolder" title="Abrir Carpeta">
+                        📂 Abrir
+                    </button>
+                    <button
+                        class="sidebar__btn"
+                        :disabled="!store.currentPath"
+                        @click="openCreateModal"
+                        title="Nueva Petición"
+                    >
+                        ➕ Nueva
+                    </button>
+                    <button
+                        class="sidebar__btn sidebar__btn--primary"
+                        :class="{ 'sidebar__btn--dirty': requestStore.isDirty }"
+                        :disabled="!store.selectedFile"
+                        @click="saveRequest"
+                        title="Guardar Petición"
+                    >
+                        {{ requestStore.isDirty ? '● ' : '' }}💾 Guardar
+                    </button>
+                    <button
+                        class="sidebar__btn"
+                        @click="openImportModal"
+                        title="Importar"
+                    >
+                        📥 Importar
+                    </button>
+                </div>
+            </div>
             
-            <div class="mainLayout__sidebarContent">
+            <div class="sidebar__content">
                 <FileTree v-if="activeActivity === 'explorer'" :entries="store.rootEntry" @node-contextmenu="handleNodeContextMenu" />
                 <GitPanel v-else-if="activeActivity === 'git'" @openDiff="handleOpenDiff" />
             </div>
@@ -297,17 +343,17 @@ async function confirmDelete() {
         <!-- Modal -->
         <div v-if="showNewRequestModal" class="mainLayout__modalOverlay">
             <div class="mainLayout__modal">
-                <h3 class="mainLayout__modalTitle">New Request</h3>
+                <h3 class="mainLayout__modalTitle">Nueva Petición</h3>
                 <input
                     v-model="newRequestName"
                     class="mainLayout__modalInput"
-                    placeholder="Request Name"
+                    placeholder="Nombre de la petición"
                     autofocus
                     @keyup.enter="confirmCreateRequest"
                 />
                 <div class="mainLayout__modalActions">
-                    <button @click="showNewRequestModal = false">Cancel</button>
-                    <button @click="confirmCreateRequest">Create</button>
+                    <button @click="showNewRequestModal = false">Cancelar</button>
+                    <button class="primary" @click="confirmCreateRequest">Crear</button>
                 </div>
             </div>
         </div>
@@ -354,108 +400,113 @@ async function confirmDelete() {
     width: 100vw;
     background-color: var(--bg-primary);
     color: var(--text-primary);
+    overflow: hidden;
 }
-
-
 
 /* Activity Bar */
 .activityBar {
-    width: 48px;
-    background-color: var(--bg-tertiary);
+    width: 64px;
+    background-color: var(--bg-secondary);
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-    padding-top: 10px;
-    border-right: 1px solid var(--border-color);
+    padding: 20px 0;
+    border-right: 1px solid var(--border-subtle);
+}
+
+.activityBar__top, .activityBar__bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .activityBar__item {
     background: none;
     border: none;
-    font-size: 1.5em; /* Emoji size */
-    padding: 10px;
-    cursor: pointer;
-    opacity: 0.5;
-    transition: opacity 0.2s;
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
     display: flex;
     justify-content: center;
     align-items: center;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: all var(--transition-fast);
+    position: relative;
+    padding: 0;
 }
 
 .activityBar__item:hover {
-    opacity: 0.8;
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
 }
 
-.activityBar__item.active {
-    opacity: 1;
-    border-left: 2px solid var(--accent-color); /* Active indicator */
-    background-color: var(--bg-secondary);
+.activityBar__item--active {
+    color: var(--accent-blue);
+    background-color: var(--accent-blue-soft);
+}
+
+.activityBar__item--active::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    background-color: var(--accent-blue);
+    border-radius: 0 4px 4px 0;
+}
+
+.activityBar__icon {
+    font-size: 20px;
 }
 
 /* Sidebar */
-.mainLayout__sidebar {
-    width: 280px;
+.sidebar {
+    width: 300px;
     background-color: var(--bg-secondary);
-    border-right: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-subtle);
     display: flex;
     flex-direction: column;
 }
 
-.mainLayout__sidebarHeader {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
+.sidebar__header {
+    padding: 16px;
     display: flex;
     flex-direction: column;
+    gap: 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar__toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
 }
 
-.mainLayout__actionButton {
-    width: 100%;
-    padding: 8px;
+.sidebar__btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    justify-content: flex-start;
     background-color: var(--bg-tertiary);
-    border: 1px solid var(--input-border);
-    color: var(--text-primary);
-    cursor: pointer;
-    border-radius: 4px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    transition: background-color 0.2s;
 }
 
-.mainLayout__actionButton:hover:not(:disabled) {
-    background-color: var(--input-border);
-}
-
-.mainLayout__actionButton:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.mainLayout__actionButton--save {
-    background-color: var(--accent-color);
-    color: var(--text-inverse);
+.sidebar__btn--primary {
+    background-color: var(--accent-blue);
+    color: #ffffff;
     border: none;
 }
 
-.mainLayout__actionButton--save:hover:not(:disabled) {
-    background-color: var(--accent-hover);
-}
-
-.mainLayout__actionButton--dirty {
-    background-color: var(--accent-dirty);
-    color: var(--text-inverse);
+.sidebar__btn--dirty {
+    background-color: var(--warning);
     border: none;
 }
 
-.mainLayout__actionButton--dirty:hover:not(:disabled) {
-    background-color: var(--accent-dirty-hover);
-}
-
-.mainLayout__sidebarContent {
+.sidebar__content {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 0;
+    padding: 8px 0;
 }
 
 /* Workspace */
@@ -464,29 +515,31 @@ async function confirmDelete() {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-width: 0; /* Permite que flex shrink funcione correctamente */
+    min-width: 0;
+    background-color: var(--bg-primary);
 }
 
 .mainLayout__panel {
     flex: 1;
     overflow: hidden;
-    min-height: 0; /* Permite que flex shrink funcione correctamente */
     display: flex;
     flex-direction: column;
+    background-color: var(--bg-primary);
 }
 
 .mainLayout__panel--request {
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
-/* Modal */
+/* Modals */
 .mainLayout__modalOverlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--bg-overlay);
+    backdrop-filter: blur(8px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -496,27 +549,24 @@ async function confirmDelete() {
 .mainLayout__modal {
     background: var(--bg-modal);
     padding: 24px;
-    border-radius: 8px;
-    border: 1px solid var(--input-border);
-    width: 320px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-standard);
+    width: 360px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
 }
 
 .mainLayout__modalTitle {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
 .mainLayout__modalInput {
-    padding: 10px;
-    background: var(--input-bg);
-    border: 1px solid var(--input-border);
-    color: var(--text-primary);
-    border-radius: 4px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    width: 100%;
 }
 
 .mainLayout__modalActions {
@@ -525,55 +575,19 @@ async function confirmDelete() {
     gap: 12px;
 }
 
-.mainLayout__modalActions button {
-    padding: 8px 16px;
-    cursor: pointer;
-    background: var(--input-border);
-    border: none;
-    color: var(--text-primary);
-    border-radius: 4px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    transition: background-color 0.2s;
-}
-
-.mainLayout__modalActions button:hover {
-    background: var(--bg-tertiary);
-}
-
-.mainLayout__modalActions button:last-child {
-    background: var(--accent-color);
-    color: var(--text-inverse);
-}
-
-.mainLayout__modalActions button:last-child:hover {
-    background: var(--accent-hover);
-}
-
 /* Diff View */
 .diff-header {
-    height: 35px;
-    background-color: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
+    height: 40px;
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
     display: flex;
     align-items: center;
-    padding: 0 10px;
+    padding: 0 16px;
 }
 
 .close-diff-btn {
-    background: none;
-    border: 1px solid var(--input-border);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 0.9em;
-    padding: 2px 8px;
-    border-radius: 3px;
-}
-.close-diff-btn:hover {
-    background: var(--bg-tertiary);
-}
-
-.theme-toggle {
-    margin-bottom: 10px;
-    font-size: 1.2em;
+    padding: 4px 12px;
+    font-size: 12px;
+    background-color: var(--bg-tertiary);
 }
 </style>

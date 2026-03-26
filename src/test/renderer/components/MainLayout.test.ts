@@ -17,6 +17,10 @@ vi.mock('@/renderer/components/git/DiffEditor.vue', () => ({ default: { template
 vi.mock('@/renderer/components/EnvironmentSelector.vue', () => ({ default: { template: '<div>EnvSelector</div>' } }));
 vi.mock('@/renderer/components/EnvironmentManagerModal.vue', () => ({ default: { template: '<div>EnvManager</div>' } }));
 vi.mock('@/renderer/components/RequestTabBar.vue', () => ({ default: { template: '<div>TabBar</div>' } }));
+vi.mock('@/renderer/components/ImportModal.vue', () => ({ default: { template: '<div>ImportModal</div>' } }));
+vi.mock('@/renderer/components/ContextMenu.vue', () => ({ default: { template: '<div>ContextMenu</div>' } }));
+vi.mock('@/renderer/components/ConfirmModal.vue', () => ({ default: { template: '<div>ConfirmModal</div>' } }));
+vi.mock('@/renderer/components/ExportDialog.vue', () => ({ default: { template: '<div>ExportDialog</div>' } }));
 
 // Mock heavy dependencies
 if (typeof window !== 'undefined') {
@@ -26,9 +30,14 @@ if (typeof window !== 'undefined') {
             getGlobalsPath: vi.fn().mockResolvedValue('/mock/globals.json'),
             readFile: vi.fn().mockResolvedValue({ variables: [] }),
             writeFile: vi.fn(),
+            readTextFile: vi.fn().mockResolvedValue('content'),
         },
         git: {
             getFileContent: vi.fn(),
+        },
+        export: {
+            generate: vi.fn(),
+            toClipboard: vi.fn(),
         }
     };
 }
@@ -64,7 +73,7 @@ describe('MainLayout.vue', () => {
 
         (window.electron.fs.selectFolder as any).mockResolvedValue('/selected/path');
 
-        const openBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('Open'));
+        const openBtn = wrapper.findAll('.sidebar__btn').find(b => b.text().includes('Abrir'));
         await openBtn?.trigger('click');
         
         expect(window.electron.fs.selectFolder).toHaveBeenCalled();
@@ -82,14 +91,14 @@ describe('MainLayout.vue', () => {
         const fsStore = useFileSystemStore();
 
         // Open modal
-        const newBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('New'));
+        const newBtn = wrapper.findAll('.sidebar__btn').find(b => b.text().includes('Nueva'));
         await newBtn?.trigger('click');
         expect(wrapper.find('.mainLayout__modalOverlay').exists()).toBe(true);
 
         // Input name and confirm
         const input = wrapper.find('.mainLayout__modalInput');
         await input.setValue('test-req');
-        await wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Create')?.trigger('click');
+        await wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Crear')?.trigger('click');
 
         expect(fsStore.createRequest).toHaveBeenCalledWith('test-req');
         expect(wrapper.find('.mainLayout__modalOverlay').exists()).toBe(false);
@@ -104,11 +113,11 @@ describe('MainLayout.vue', () => {
         const fsStore = useFileSystemStore();
 
         // Open modal
-        const newBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('New'));
+        const newBtn = wrapper.findAll('.sidebar__btn').find(b => b.text().includes('Nueva'));
         await newBtn?.trigger('click');
         
         // Confirm with empty name
-        const createBtn = wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Create');
+        const createBtn = wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Crear');
         await createBtn?.trigger('click');
 
         expect(fsStore.createRequest).not.toHaveBeenCalled();
@@ -126,12 +135,12 @@ describe('MainLayout.vue', () => {
         (fsStore.createRequest as any).mockRejectedValue(new Error('fail'));
 
         // Open modal
-        const newBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('New'));
+        const newBtn = wrapper.findAll('.sidebar__btn').find(b => b.text().includes('Nueva'));
         await newBtn?.trigger('click');
         
         // Input and confirm
         await wrapper.find('.mainLayout__modalInput').setValue('req');
-        const createBtn = wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Create');
+        const createBtn = wrapper.findAll('.mainLayout__modalActions button').find(b => b.text() === 'Crear');
         await createBtn?.trigger('click');
         await flushPromises();
 
@@ -147,12 +156,12 @@ describe('MainLayout.vue', () => {
         // Switch to Git
         await buttons[1].trigger('click');
         expect(wrapper.text()).toContain('GitPanel');
-        expect(wrapper.text()).not.toContain('Open'); 
+        expect(wrapper.text()).not.toContain('Abrir'); 
 
         // Switch back to Explorer
         await buttons[0].trigger('click');
         expect(wrapper.text()).toContain('FileTree');
-        expect(wrapper.text()).toContain('Open');
+        expect(wrapper.text()).toContain('Abrir');
     });
 
     it('triggers saveRequest action', async () => {
@@ -163,7 +172,7 @@ describe('MainLayout.vue', () => {
         const wrapper = mount(MainLayout, { global: { plugins: [pinia] } });
         const requestStore = useRequestStore();
 
-        const saveBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('Save'));
+        const saveBtn = wrapper.findAll('.sidebar__btn').find(b => b.text().includes('Guardar'));
         await saveBtn?.trigger('click');
         expect(requestStore.saveToFile).toHaveBeenCalled();
     });
@@ -174,7 +183,7 @@ describe('MainLayout.vue', () => {
         
         (window.electron.fs.selectFolder as any).mockRejectedValue(new Error('fail'));
 
-        const openBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('Open'));
+        const openBtn = wrapper.findAll('.sidebar__btn').find(b => b.text().includes('Abrir'));
         await openBtn?.trigger('click');
         await flushPromises();
 
@@ -191,7 +200,7 @@ describe('MainLayout.vue', () => {
         
         (requestStore.saveToFile as any).mockRejectedValue(new Error('fail'));
 
-        const saveBtn = wrapper.findAll('.mainLayout__actionButton').find(b => b.text().includes('Save'));
+        const saveBtn = wrapper.findAll('.sidebar__btn').find(b => b.text().includes('Guardar'));
         await saveBtn?.trigger('click');
         await flushPromises();
 
@@ -213,7 +222,7 @@ describe('MainLayout.vue', () => {
         const gitPanel = wrapper.getComponent({ name: 'GitPanel' });
         
         (window.electron.git.getFileContent as any).mockResolvedValue('original content');
-        (window.electron.fs.readFile as any).mockResolvedValue('modified content');
+        (window.electron.fs.readTextFile as any).mockResolvedValue('modified content');
 
         await gitPanel.vm.$emit('openDiff', 'file.json', '/repo/path');
         

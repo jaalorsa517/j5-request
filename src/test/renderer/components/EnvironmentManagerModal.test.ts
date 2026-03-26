@@ -43,15 +43,18 @@ describe('EnvironmentManagerModal.vue', () => {
         const store = useEnvironmentStore();
 
         // Check initial state
-        expect(wrapper.text()).toContain('Environment Manager');
+        expect(wrapper.text()).toContain('Gestor de Entornos');
+
+        // Switch to Active Env
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
         
         // Add a variable
-        const keyInput = wrapper.find('input[placeholder="New Key"]');
-        const valInput = wrapper.find('input[placeholder="Value"]');
+        const keyInput = wrapper.find('input[placeholder="Nueva clave..."]');
+        const valInput = wrapper.find('input[placeholder="Valor..."]');
         
         await keyInput.setValue('TEST_KEY');
         await valInput.setValue('TEST_VALUE');
-        await wrapper.find('.new-row button').trigger('click');
+        await wrapper.find('.envModal__row--new .envModal__rowBtn').trigger('click');
 
         expect(store.activeEnvironment?.variables).toHaveLength(1);
         expect(store.activeEnvironment?.variables[0].key).toBe('TEST_KEY');
@@ -73,15 +76,15 @@ describe('EnvironmentManagerModal.vue', () => {
             global: { plugins: [pinia] }
         });
 
-        const sidebarItems = wrapper.findAll('.scope-item');
+        const sidebarItems = wrapper.findAll('.envModal__scopeItem');
         
-        // Switch to Globals
+        // Switch to Globals (already default, but trigger anyway)
         await sidebarItems[0].trigger('click');
-        expect(wrapper.text()).toContain('Global Variables');
+        expect(wrapper.text()).toContain('Variables Globales');
 
         // Switch to Active Env
         await sidebarItems[1].trigger('click');
-        expect(wrapper.text()).toContain('Name:');
+        expect(wrapper.text()).toContain('Nombre:');
     });
 
     it('calls save on both scopes', async () => {
@@ -101,24 +104,25 @@ describe('EnvironmentManagerModal.vue', () => {
         });
 
         const store = useEnvironmentStore();
-        const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Save');
+        const saveBtn = wrapper.findAll('button').find(b => b.text() === 'Guardar Cambios');
 
-        // Save Active Env
+        // Switch to Active Env and save
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
         await saveBtn?.trigger('click');
         expect(store.saveActiveEnvironment).toHaveBeenCalled();
 
         // Switch to Globals and save
-        await wrapper.findAll('.scope-item')[0].trigger('click');
+        await wrapper.findAll('.envModal__scopeItem')[0].trigger('click');
         await saveBtn?.trigger('click');
         expect(store.saveGlobals).toHaveBeenCalled();
 
         // Add variable to globals
-        await wrapper.find('input[placeholder="New Key"]').setValue('G_KEY');
-        await wrapper.find('.new-row button').trigger('click');
+        await wrapper.find('input[placeholder="Nueva clave..."]').setValue('G_KEY');
+        await wrapper.find('.envModal__row--new .envModal__rowBtn').trigger('click');
         expect(store.globals.variables).toHaveLength(1);
 
         // Remove variable from globals
-        await wrapper.find('.vars-row .col-actions button').trigger('click');
+        await wrapper.find('.envModal__row .envModal__col--actions .envModal__rowBtn').trigger('click');
         expect(store.globals.variables).toHaveLength(0);
     });
 
@@ -142,33 +146,36 @@ describe('EnvironmentManagerModal.vue', () => {
         });
 
         const store = useEnvironmentStore();
+
+        // Switch to Active Env
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
         
         // Toggle enabled
-        const checkbox = wrapper.find('.vars-row input[type="checkbox"]');
+        const checkbox = wrapper.find('.envModal__row input[type="checkbox"]');
         await checkbox.setValue(false);
         expect(store.activeEnvironment?.variables[0].enabled).toBe(false);
 
         // Change key
-        const keyInput = wrapper.findAll('.vars-row input').find(i => (i.element as any).value === 'K');
+        const keyInput = wrapper.findAll('.envModal__row input').find(i => (i.element as any).value === 'K');
         await keyInput?.setValue('K2');
         expect(store.activeEnvironment?.variables[0].key).toBe('K2');
 
-        // Change value (Line 139)
-        const valInput = wrapper.find('.vars-row .col-value input');
+        // Change value
+        const valInput = wrapper.find('.envModal__col--value input');
         await valInput.setValue('V2');
         expect(store.activeEnvironment?.variables[0].value).toBe('V2');
 
         // Change type
-        const typeSelect = wrapper.find('.vars-row select');
+        const typeSelect = wrapper.find('.envModal__row select');
         await typeSelect.setValue('secret');
         expect(store.activeEnvironment?.variables[0].type).toBe('secret');
 
         // Remove
-        await wrapper.find('.vars-row .col-actions button').trigger('click');
+        await wrapper.find('.envModal__row .envModal__col--actions .envModal__rowBtn').trigger('click');
         expect(store.activeEnvironment?.variables).toHaveLength(0);
     });
 
-    it('updates active environment name (Line 114)', async () => {
+    it('updates active environment name', async () => {
         const pinia = createTestingPinia({
             createSpy: vi.fn,
             initialState: {
@@ -181,12 +188,15 @@ describe('EnvironmentManagerModal.vue', () => {
         const wrapper = mount(EnvironmentManagerModal, { global: { plugins: [pinia] } });
         const store = useEnvironmentStore();
         
-        const nameInput = wrapper.find('.env-info input');
+        // Switch to Active Env first because initial scope is globals
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
+        
+        const nameInput = wrapper.find('.envModal__info input');
         await nameInput.setValue('New');
         expect(store.activeEnvironment?.name).toBe('New');
     });
 
-    it('handles new variable secret toggle (Line 162)', async () => {
+    it('handles new variable secret toggle', async () => {
         const pinia = createTestingPinia({
             createSpy: vi.fn,
             initialState: {
@@ -197,18 +207,21 @@ describe('EnvironmentManagerModal.vue', () => {
             }
         });
         const wrapper = mount(EnvironmentManagerModal, { global: { plugins: [pinia] } });
+
+        // Switch to Active Env
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
         
-        const secretSelect = wrapper.find('.new-row select');
+        const secretSelect = wrapper.find('.envModal__row--new select');
         await secretSelect.setValue('true'); 
         
-        await wrapper.find('input[placeholder="New Key"]').setValue('SK');
-        await wrapper.find('.new-row button').trigger('click');
+        await wrapper.find('input[placeholder="Nueva clave..."]').setValue('SK');
+        await wrapper.find('.envModal__row--new .envModal__rowBtn').trigger('click');
         
         const store = useEnvironmentStore();
         expect(store.activeEnvironment?.variables[0].type).toBe('secret');
     });
 
-    it('handles close environment button (Line 177)', async () => {
+    it('handles close environment button', async () => {
         const pinia = createTestingPinia({
             createSpy: vi.fn,
             initialState: {
@@ -219,6 +232,10 @@ describe('EnvironmentManagerModal.vue', () => {
             }
         });
         const wrapper = mount(EnvironmentManagerModal, { global: { plugins: [pinia] } });
+        
+        // Switch to Active Env
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
+        
         const store = useEnvironmentStore();
         
         await wrapper.find('.envModal__footer button').trigger('click');
@@ -240,8 +257,11 @@ describe('EnvironmentManagerModal.vue', () => {
             global: { plugins: [pinia] }
         });
 
-        await wrapper.find('input[placeholder="New Key"]').setValue('AUTO_KEY');
-        await wrapper.findAll('button').find(b => b.text() === 'Save')?.trigger('click');
+        // Switch to Active Env
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
+
+        await wrapper.find('input[placeholder="Nueva clave..."]').setValue('AUTO_KEY');
+        await wrapper.findAll('button').find(b => b.text() === 'Guardar Cambios')?.trigger('click');
 
         const store = useEnvironmentStore();
         expect(store.activeEnvironment?.variables).toHaveLength(1);
@@ -260,7 +280,10 @@ describe('EnvironmentManagerModal.vue', () => {
         });
         const wrapper = mount(EnvironmentManagerModal, { global: { plugins: [pinia] } });
         
-        const input = wrapper.find('input[placeholder="New Key"]');
+        // Switch to Active Env
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
+
+        const input = wrapper.find('input[placeholder="Nueva clave..."]');
         await input.setValue('KEY');
         await input.trigger('keyup.enter');
         
@@ -273,7 +296,7 @@ describe('EnvironmentManagerModal.vue', () => {
         const wrapper = mount(EnvironmentManagerModal, { global: { plugins: [pinia] } });
         const store = useEnvironmentStore();
         
-        await wrapper.find('.close-btn').trigger('click');
+        await wrapper.find('.envModal__close').trigger('click');
         expect(store.showManager).toBe(false);
     });
 
@@ -289,6 +312,9 @@ describe('EnvironmentManagerModal.vue', () => {
         });
         const wrapper = mount(EnvironmentManagerModal, { global: { plugins: [pinia] } });
         const store = useEnvironmentStore();
+
+        // Switch to Active Env
+        await wrapper.findAll('.envModal__scopeItem')[1].trigger('click');
         
         // Make variables.push throw
         Object.defineProperty(store.activeEnvironment, 'variables', {
@@ -300,8 +326,8 @@ describe('EnvironmentManagerModal.vue', () => {
         const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-        await wrapper.find('input[placeholder="New Key"]').setValue('KEY');
-        await wrapper.find('.new-row button').trigger('click');
+        await wrapper.find('input[placeholder="Nueva clave..."]').setValue('KEY');
+        await wrapper.find('.envModal__row--new .envModal__rowBtn').trigger('click');
 
         expect(alertSpy).toHaveBeenCalledWith('Failed to add variable');
         
@@ -326,8 +352,8 @@ describe('EnvironmentManagerModal.vue', () => {
         const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
         // Switch to globals
-        await wrapper.findAll('.scope-item')[0].trigger('click');
-        await wrapper.findAll('button').find(b => b.text() === 'Save')?.trigger('click');
+        await wrapper.findAll('.envModal__scopeItem')[0].trigger('click');
+        await wrapper.findAll('button').find(b => b.text() === 'Guardar Cambios')?.trigger('click');
         await flushPromises();
 
         expect(alertSpy).toHaveBeenCalledWith('Error saving: save fail');
