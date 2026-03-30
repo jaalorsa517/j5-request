@@ -1,6 +1,4 @@
-# Spec: UI Theming
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Sistema de Design Tokens
 El sistema de tematización SHALL basarse en un conjunto de design tokens (variables CSS) organizados por semántica de uso (superficies, tipografía, bordes).
@@ -20,6 +18,8 @@ El sistema de tematización SHALL basarse en un conjunto de design tokens (varia
 - **THEN** SHALL utilizar la variable `--brand-primary` con el valor hexadecimal `#008937`.
 - **AND** Se SHALL disponer de variantes `--brand-secondary` y `--brand-tertiary` para estados de interacción.
 
+## MODIFIED Requirements
+
 ### Requirement: Gestión de Tema (Dark/Light)
 La aplicación debe permitir cambiar entre temas claro y oscuro, respetando la preferencia del sistema y persistiendo la elección del usuario mediante la actualización de los design tokens correspondientes.
 
@@ -34,19 +34,3 @@ La aplicación debe permitir cambiar entre temas claro y oscuro, respetando la p
 - **THEN** El atributo `data-theme` del documento debe actualizarse al nuevo valor ('dark' o 'light').
 - **AND** El sistema SHALL reasignar los valores de los design tokens (variables CSS) según el tema seleccionado.
 - **AND** La nueva selección debe guardarse en `localStorage` para futuras sesiones.
-
-#### Scenario: Interacción de Usuario
-- **WHEN** El usuario hace clic en el botón de "Cambiar Tema" ubicado en la interfaz principal.
-- **THEN** La aplicación alternará entre los modos Claro y Oscuro.
-- **AND** El cambio será visible inmediatamente sin recargar.
-
-#### Scenario: Visualización Consistente
-- **WHEN** Se aplica el tema Claro.
-- **THEN** Elementos como pestañas (`RequestTabBar`), paneles (`RequestPanel`, `ResponsePanel`) y editores deben tener fondo claro y texto oscuro con contraste suficiente.
-- **AND** Ningún texto debe ser invisible (blanco sobre blanco o negro sobre negro).
-
-#### Scenario: Visualización de Modales
-- **WHEN** Se muestra un diálogo modal (ej. "New Request", "Environment Manager").
-- **THEN** El fondo del diálogo debe tener el color correspondiente al tema actual (oscuro o claro).
-- **AND** El texto dentro del diálogo debe ser legible con contraste adecuado.
-- **AND** Los campos de entrada (inputs) deben respetar el tema en curso.

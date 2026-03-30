@@ -494,7 +494,7 @@ onUnmounted(() => {
 
 .sidebar__btn--primary {
     background-color: var(--accent-blue);
-    color: #ffffff;
+    color: var(--text-primary);
     border: none;
 }
 
