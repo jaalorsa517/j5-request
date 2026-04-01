@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ImportService } from '@/main/services/ImportService';
 
 describe('ImportService', () => {
@@ -10,130 +10,180 @@ describe('ImportService', () => {
 
     describe('detectFormat', () => {
         it('should detect cURL', () => {
-            const curl = "curl -X GET http://example.com";
-            expect(service.detectFormat(curl).format).toBe('curl');
+            expect(service.detectFormat('curl https://api.com')).toEqual({ format: 'curl', confidence: 0.95 });
+        });
+
+        it('should detect Postman collection', () => {
+            const postman = JSON.stringify({ info: { schema: 'v2.1' }, item: [] });
+            expect(service.detectFormat(postman)).toEqual({ format: 'postman', confidence: 0.9 });
+        });
+
+        it('should detect Insomnia collection', () => {
+            const insomnia = JSON.stringify({ resources: [{ _type: 'request' }] });
+            expect(service.detectFormat(insomnia)).toEqual({ format: 'insomnia', confidence: 0.9 });
         });
 
         it('should detect OpenAPI JSON', () => {
-            const json = JSON.stringify({ openapi: '3.0.0', paths: {} });
-            expect(service.detectFormat(json).format).toBe('openapi');
+            const openapi = JSON.stringify({ openapi: '3.0.0', paths: {} });
+            expect(service.detectFormat(openapi)).toEqual({ format: 'openapi', confidence: 0.95 });
         });
 
-        it('should detect Postman Collection', () => {
-            const json = JSON.stringify({ info: { schema: 'postman' }, item: [] });
-            expect(service.detectFormat(json).format).toBe('postman');
-        });
-
-        it('should detect Insomnia Export', () => {
-            const json = JSON.stringify({ _type: 'export', resources: [] });
-            expect(service.detectFormat(json).format).toBe('insomnia');
+        it('should detect OpenAPI YAML', () => {
+            expect(service.detectFormat('openapi: 3.0.0\npaths: {}')).toEqual({ format: 'openapi', confidence: 0.8 });
         });
 
         it('should detect Fetch', () => {
-            const code = "fetch('http://example.com', { method: 'GET' })";
-            expect(service.detectFormat(code).format).toBe('fetch');
+            expect(service.detectFormat('fetch("url", { method: "GET" })')).toEqual({ format: 'fetch', confidence: 0.7 });
         });
 
         it('should detect PowerShell', () => {
-            const code = "Invoke-WebRequest -Uri http://example.com";
-            expect(service.detectFormat(code).format).toBe('powershell');
+            expect(service.detectFormat('Invoke-WebRequest -Uri "url"')).toEqual({ format: 'powershell', confidence: 0.8 });
+        });
+
+        it('should return null for unknown content', () => {
+            expect(service.detectFormat('just some text')).toEqual({ format: null, confidence: 0 });
         });
     });
 
     describe('parseCurl', () => {
-        it('should parse basic GET', () => {
-            const curl = "curl http://example.com";
-            const result = service.parseCurl(curl);
-            expect(result.method).toBe('GET');
-            // curlconverter puede o no agregar trailing slash dependiendo de la versión/input
-            expect(result.url.replace(/\/$/, '')).toBe('http://example.com');
-        });
-
-        it('should parse POST with JSON body', () => {
-            const curl = `curl -X POST http://api.com -H "Content-Type: application/json" -d '{"foo":"bar"}'`;
+        it('should parse basic curl command', () => {
+            const curl = "curl -X POST 'https://api.com/v1/users?a=1' -H 'Authorization: Bearer token' -d '{\"name\":\"test\"}'";
             const result = service.parseCurl(curl);
             expect(result.method).toBe('POST');
-            expect(result.headers['Content-Type']).toBe('application/json');
-            expect(result.body?.type).toBe('json');
-            expect((result.body?.content as any).foo).toBe('bar');
-        });
-    });
-
-    describe('parseFetch', () => {
-        it('should parse fetch call', () => {
-            const code = `
-                fetch('https://api.example.com/data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ "id": 123 })
-                })
-            `;
-            const result = service.parseFetch(code);
-            expect(result.method).toBe('POST');
-            expect(result.url).toBe('https://api.example.com/data');
-            expect(result.headers['Content-Type']).toBe('application/json');
-            expect((result.body?.content as any).id).toBe(123);
-        });
-    });
-
-    describe('Validation', () => {
-        it('should throw error for invalid OpenAPI spec', () => {
-            expect(() => service.parseOpenAPI('invalid')).toThrow();
+            expect(result.url).toBe('https://api.com/v1/users');
+            expect(result.headers).toHaveProperty('Authorization', 'Bearer token');
+            expect(result.queryParams).toHaveProperty('a', '1');
+            expect(result.body?.content).toEqual({ name: 'test' });
         });
 
-        it('should throw error for invalid Postman collection', () => {
-            expect(() => service.parsePostman('invalid')).toThrow();
+        it('should throw error if no URL found', () => {
+            expect(() => service.parseCurl('curl -X GET')).toThrow('No URL found');
         });
     });
 
     describe('parseOpenAPI', () => {
-        it('should parse basic OpenAPI JSON', () => {
+        it('should parse simple OpenAPI JSON', () => {
             const spec = {
                 openapi: '3.0.0',
+                servers: [{ url: 'https://api.com' }],
                 paths: {
                     '/users': {
-                        get: {
-                            summary: 'Get Users',
-                            responses: {}
-                        }
+                        get: { summary: 'List Users' }
                     }
                 }
             };
-            const results = service.parseOpenAPI(spec);
-            expect(results).toHaveLength(1);
-            expect(results[0].method).toBe('GET');
-            expect(results[0].url).toContain('/users');
+            const result = service.parseOpenAPI(spec);
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe('List Users');
+            expect(result[0].url).toBe('https://api.com/users');
+        });
+
+        it('should parse OpenAPI YAML string', () => {
+            const yaml = `
+openapi: 3.0.0
+paths:
+  /test:
+    post:
+      summary: Test
+`;
+            const result = service.parseOpenAPI(yaml);
+            expect(result[0].name).toBe('Test');
+        });
+
+        it('should throw error for invalid format', () => {
+            expect(() => service.parseOpenAPI('!!! invalid yaml')).toThrow('Invalid OpenAPI format');
         });
     });
 
     describe('parsePostman', () => {
-        it('should parse Postman collection', () => {
-            const collection = {
-                info: { name: 'Test' },
+        it('should parse Postman v2.1 collection', () => {
+            const col = {
+                info: { name: 'Col' },
                 item: [
                     {
-                        name: 'Get User',
+                        name: 'Req 1',
                         request: {
                             method: 'GET',
-                            url: { raw: 'http://api.com/user' }
+                            url: { raw: 'https://api.com/test', query: [{ key: 'p', value: '1' }] },
+                            header: [{ key: 'H', value: 'V' }],
+                            body: { mode: 'raw', raw: '{"a":1}' }
                         }
                     }
                 ]
             };
-            const results = service.parsePostman(collection);
-            expect(results).toHaveLength(1);
-            expect(results[0].method).toBe('GET');
-            expect(results[0].url).toBe('http://api.com/user');
+            const result = service.parsePostman(col);
+            expect(result[0].name).toBe('Req 1');
+            expect(result[0].queryParams).toHaveProperty('p', '1');
+            expect(result[0].body?.type).toBe('json');
+        });
+    });
+
+    describe('parseInsomnia', () => {
+        it('should parse Insomnia export', () => {
+            const exp = {
+                resources: [
+                    {
+                        _type: 'request',
+                        name: 'Req 1',
+                        method: 'PUT',
+                        url: 'https://api.com',
+                        headers: [{ name: 'H', value: 'V' }],
+                        body: { mimeType: 'application/json', text: '{"ok":true}' }
+                    }
+                ]
+            };
+            const result = service.parseInsomnia(exp);
+            expect(result[0].name).toBe('Req 1');
+            expect(result[0].method).toBe('PUT');
+            expect(result[0].body?.content).toEqual({ ok: true });
+        });
+    });
+
+    describe('parseFetch', () => {
+        it('should parse simple fetch code', () => {
+            const code = "fetch('https://api.com/data?q=test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a: 1 }) })";
+            const result = service.parseFetch(code);
+            expect(result.method).toBe('POST');
+            expect(result.url).toBe('https://api.com/data');
+            expect(result.queryParams).toHaveProperty('q', 'test');
+            expect(result.headers).toHaveProperty('Content-Type', 'application/json');
         });
     });
 
     describe('parsePowerShell', () => {
         it('should parse Invoke-WebRequest', () => {
-            const code = `Invoke-WebRequest -Uri "http://api.com" -Method POST -Body '{"a":1}'`;
+            const code = 'Invoke-WebRequest -Uri "https://api.com/res" -Method "DELETE" -Headers @{ "Auth" = "123" }';
             const result = service.parsePowerShell(code);
-            expect(result.method).toBe('POST');
-            expect(result.url).toBe('http://api.com');
-            expect((result.body?.content as any).a).toBe(1);
+            expect(result.method).toBe('DELETE');
+            expect(result.url).toBe('https://api.com/res');
+            expect(result.headers).toHaveProperty('Auth', '123');
+        });
+    });
+
+    describe('importFromContent', () => {
+        it('should import from curl automatically', async () => {
+            const result = await service.importFromContent('curl https://api.com');
+            expect(result.success).toBe(true);
+            expect(result.requests).toHaveLength(1);
+            expect(result.requests[0].url).toBe('https://api.com/');
+        });
+
+        it('should handle explicit format', async () => {
+            const result = await service.importFromContent('https://api.com', { format: 'fetch' });
+            // Although it's just a URL, parseFetch will try to extract what it can
+            expect(result.requests).toHaveLength(1);
+        });
+
+        it('should return error for unsupported format', async () => {
+            const result = await service.importFromContent('text', { format: 'unknown' as any });
+            expect(result.success).toBe(false);
+            expect(result.errors[0]).toContain('Unsupported format');
+        });
+
+        it('should return error if detection fails', async () => {
+            const result = await service.importFromContent('just text');
+            expect(result.success).toBe(false);
+            expect(result.errors[0]).toContain('Could not detect format');
         });
     });
 });

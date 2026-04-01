@@ -1,282 +1,167 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ExportService } from '@/main/services/ExportService';
 import { J5Request } from '@/shared/types';
+import { clipboard } from 'electron';
+import fs from 'fs/promises';
+
+vi.mock('electron', () => ({
+    clipboard: {
+        writeText: vi.fn()
+    }
+}));
+vi.mock('fs/promises');
 
 describe('ExportService', () => {
-    let exportService: ExportService;
+    let service: ExportService;
 
     beforeEach(() => {
-        exportService = new ExportService();
+        vi.clearAllMocks();
+        service = new ExportService();
     });
 
-    const createMockRequest = (overrides?: Partial<J5Request>): J5Request => ({
-        id: '123',
+    const mockRequest: J5Request = {
+        id: '1',
         name: 'Test Request',
-        method: 'GET',
-        url: 'https://api.example.com/users',
-        headers: {},
+        method: 'POST',
+        url: 'https://api.example.com/data',
+        headers: { 'X-Test': 'Value' },
         params: {},
-        ...overrides
-    });
+        body: { type: 'json', content: { foo: 'bar' } },
+        preRequestScript: '',
+        postResponseScript: ''
+    };
 
     describe('generateCurl', () => {
-        it('should generate basic GET cURL command', () => {
-            const request = createMockRequest();
-            const result = exportService.generateCurl(request);
-
-            expect(result).toContain('curl -X GET');
-            expect(result).toContain('https://api.example.com/users');
+        it('should generate a basic curl command', () => {
+            const curl = service.generateCurl(mockRequest);
+            expect(curl).toContain("curl -X POST 'https://api.example.com/data'");
+            expect(curl).toContain("-H 'X-Test: Value'");
+            expect(curl).toContain("-d '{\"foo\":\"bar\"}'");
         });
 
-        it('should include headers in cURL command', () => {
-            const request = createMockRequest({
-                headers: {
-                    'Authorization': 'Bearer token123',
-                    'Content-Type': 'application/json'
-                }
-            });
-            const result = exportService.generateCurl(request);
-
-            expect(result).toContain('-H \'Authorization:');
-            expect(result).toContain('-H \'Content-Type:');
+        it('should handle SSL insecure flag', () => {
+            const req = { ...mockRequest, sslConfig: { rejectUnauthorized: false } };
+            const curl = service.generateCurl(req as any);
+            expect(curl).toContain('-k');
+            expect(curl).toContain('# CAUTION: SSL Verification Disabled');
         });
 
-        it('should include JSON body in POST request', () => {
-            const request = createMockRequest({
-                method: 'POST',
-                body: {
-                    type: 'json',
-                    content: { name: 'John', age: 30 }
-                }
-            });
-            const result = exportService.generateCurl(request);
-
-            expect(result).toContain('-X POST');
-            expect(result).toContain('-d \'');
-            expect(result).toContain('John');
-        });
-
-        it('should escape single quotes in values', () => {
-            const request = createMockRequest({
-                headers: {
-                    'X-Custom': "It's a test"
-                }
-            });
-            const result = exportService.generateCurl(request);
-
-            // Should escape the single quote
-            expect(result).toContain('It');
+        it('should escape single quotes in shell command', () => {
+            const req = { ...mockRequest, headers: { 'User': "O'Reilly" } };
+            const curl = service.generateCurl(req as any);
+            expect(curl).toContain("'User: O'\\''Reilly'");
         });
 
         it('should handle form-data body', () => {
-            const request = createMockRequest({
-                method: 'POST',
+            const req = {
+                ...mockRequest,
                 body: {
                     type: 'form-data',
-                    content: {
-                        field1: 'value1',
-                        field2: 'value2'
-                    }
+                    content: { key: 'val', file: { path: '/tmp/test.txt' } }
                 }
-            });
-            const result = exportService.generateCurl(request);
+            };
+            const curl = service.generateCurl(req as any);
+            expect(curl).toContain("-F 'key=val'");
+            expect(curl).toContain("-F 'file=@/tmp/test.txt'");
+        });
 
-            expect(result).toContain('-F \'field1=');
-            expect(result).toContain('-F \'field2=');
+        it('should warn about scripts in curl', () => {
+            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const req = { ...mockRequest, preRequestScript: 'console.log()' };
+            service.generateCurl(req as any);
+            expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('scripts are not supported'));
+            consoleSpy.mockRestore();
         });
     });
 
     describe('generateFetch', () => {
-        it('should generate basic Fetch code', () => {
-            const request = createMockRequest();
-            const result = exportService.generateFetch(request);
-
-            expect(result).toContain('fetch(');
-            expect(result).toContain('https://api.example.com/users');
-            expect(result).toContain('"method": "GET"');
+        it('should generate basic fetch code', () => {
+            const code = service.generateFetch(mockRequest);
+            expect(code).toContain("fetch('https://api.example.com/data'");
+            expect(code).toContain('"method": "POST"');
         });
 
-        it('should include headers in Fetch options', () => {
-            const request = createMockRequest({
-                headers: {
-                    'Authorization': 'Bearer token123'
-                }
-            });
-            const result = exportService.generateFetch(request);
-
-            expect(result).toContain('Authorization');
-            expect(result).toContain('Bearer token123');
-        });
-
-        it('should include JSON body in POST request', () => {
-            const request = createMockRequest({
-                method: 'POST',
-                body: {
-                    type: 'json',
-                    content: { name: 'John' }
-                }
-            });
-            const result = exportService.generateFetch(request);
-
-            expect(result).toContain('"method": "POST"');
-            expect(result).toContain('"body":');
+        it('should handle form-data in fetch', () => {
+            const req = {
+                ...mockRequest,
+                body: { type: 'form-data', content: { key: 'val' } }
+            };
+            const code = service.generateFetch(req as any);
+            expect(code).toContain('const formData = new FormData()');
+            expect(code).toContain("formData.append('key', 'val')");
         });
     });
 
     describe('generatePowerShell', () => {
-        it('should generate basic PowerShell command', () => {
-            const request = createMockRequest();
-            const result = exportService.generatePowerShell(request);
-
-            expect(result).toContain('Invoke-WebRequest');
-            expect(result).toContain('-Uri "https://api.example.com/users"');
-            expect(result).toContain('-Method GET');
-        });
-
-        it('should include headers in PowerShell command', () => {
-            const request = createMockRequest({
-                headers: {
-                    'Authorization': 'Bearer token123'
-                }
-            });
-            const result = exportService.generatePowerShell(request);
-
-            expect(result).toContain('-Headers');
-            expect(result).toContain('Authorization');
-        });
-
-        it('should include JSON body in POST request', () => {
-            const request = createMockRequest({
-                method: 'POST',
-                body: {
-                    type: 'json',
-                    content: { name: 'John' }
-                }
-            });
-            const result = exportService.generatePowerShell(request);
-
-            expect(result).toContain('-Body');
-            expect(result).toContain('-ContentType "application/json"');
+        it('should generate Invoke-WebRequest command', () => {
+            const ps = service.generatePowerShell(mockRequest);
+            expect(ps).toContain('Invoke-WebRequest -Uri "https://api.example.com/data"');
+            expect(ps).toContain("-Method POST");
+            expect(ps).toContain('`"foo`":`"bar`"');
         });
     });
 
     describe('generatePostmanCollection', () => {
-        it('should generate valid Postman collection structure', () => {
-            const requests = [createMockRequest()];
-            const result = exportService.generatePostmanCollection(requests);
-
-            expect(result).toHaveProperty('info');
-            expect(result).toHaveProperty('item');
-            expect((result as any).info.name).toBe('Exported from J5 Request');
-            expect((result as any).item).toHaveLength(1);
-        });
-
-        it('should include request details in collection', () => {
-            const request = createMockRequest({
-                name: 'Get Users',
-                method: 'GET',
-                headers: { 'Authorization': 'Bearer token' }
-            });
-            const result = exportService.generatePostmanCollection([request]);
-
-            const item = (result as any).item[0];
-            expect(item.name).toBe('Get Users');
-            expect(item.request.method).toBe('GET');
-            expect(item.request.header).toHaveLength(1);
-        });
-
-        it('should not throw when serialized to JSON', () => {
-            const requests = [createMockRequest()];
-            const result = exportService.generatePostmanCollection(requests);
-
-            expect(() => JSON.stringify(result)).not.toThrow();
-            expect(() => JSON.parse(JSON.stringify(result))).not.toThrow();
+        it('should generate valid Postman v2.1 collection', () => {
+            const collection = service.generatePostmanCollection([mockRequest]) as any;
+            expect(collection.info.schema).toContain('collection.json');
+            expect(collection.item[0].name).toBe('Test Request');
+            expect(collection.item[0].request.header[0].key).toBe('X-Test');
         });
     });
 
     describe('generateInsomniaCollection', () => {
-        it('should generate valid Insomnia collection structure', () => {
-            const requests = [createMockRequest()];
-            const result = exportService.generateInsomniaCollection(requests);
-
-            expect(result).toHaveProperty('_type', 'export');
-            expect(result).toHaveProperty('__export_format', 4);
-            expect(result).toHaveProperty('resources');
-            expect((result as any).resources).toBeInstanceOf(Array);
-        });
-
-        it('should include workspace and request resources', () => {
-            const requests = [createMockRequest()];
-            const result = exportService.generateInsomniaCollection(requests);
-
-            const resources = (result as any).resources;
-            expect(resources.length).toBeGreaterThan(1);
-            expect(resources[0]._type).toBe('workspace');
-            expect(resources[1]._type).toBe('request');
-        });
-
-        it('should not throw when serialized to JSON', () => {
-            const requests = [createMockRequest()];
-            const result = exportService.generateInsomniaCollection(requests);
-
-            expect(() => JSON.stringify(result)).not.toThrow();
-            expect(() => JSON.parse(JSON.stringify(result))).not.toThrow();
+        it('should generate valid Insomnia v4 export', () => {
+            const collection = service.generateInsomniaCollection([mockRequest]) as any;
+            expect(collection.__export_format).toBe(4);
+            const req = collection.resources.find((r: any) => r._type === 'request');
+            expect(req.name).toBe('Test Request');
+            expect(req.body.mimeType).toBe('application/json');
         });
     });
 
     describe('generateOpenAPI', () => {
-        const metadata = {
-            title: 'Test API',
-            version: '1.0.0',
-            description: 'Test API Description',
-            serverUrl: 'https://api.example.com'
-        };
-
-        it('should generate valid OpenAPI structure', () => {
-            const requests = [createMockRequest()];
-            const result = exportService.generateOpenAPI(requests, metadata);
-
-            expect(result).toHaveProperty('openapi', '3.0.0');
-            expect(result).toHaveProperty('info');
-            expect(result).toHaveProperty('paths');
-            expect((result as any).info.title).toBe('Test API');
+        it('should generate valid OpenAPI 3.0.0 spec', () => {
+            const metadata = { title: 'Test API', version: '1.0.0' };
+            const spec = service.generateOpenAPI([mockRequest], metadata) as any;
+            expect(spec.openapi).toBe('3.0.0');
+            expect(spec.info.title).toBe('Test API');
+            expect(spec.paths['/data'].post).toBeDefined();
         });
 
-        it('should include server URL if provided', () => {
-            const requests = [createMockRequest()];
-            const result = exportService.generateOpenAPI(requests, metadata);
-
-            expect((result as any).servers).toHaveLength(1);
-            expect((result as any).servers[0].url).toBe('https://api.example.com');
+        it('should throw error for invalid OpenAPI metadata', () => {
+            expect(() => service.generateOpenAPI([], {} as any)).toThrow('missing required "info" fields');
         });
 
-        it('should create paths from request URLs', () => {
-            const requests = [createMockRequest({
-                url: 'https://api.example.com/users',
-                method: 'GET'
-            })];
-            const result = exportService.generateOpenAPI(requests, metadata);
+        it('should handle invalid URLs gracefully', () => {
+            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const invalidReq = { ...mockRequest, url: 'invalid-url' };
+            service.generateOpenAPI([invalidReq as any], { title: 'T', version: '1' });
+            expect(consoleSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Skipping invalid URL'),
+                'invalid-url'
+            );
+            consoleSpy.mockRestore();
+        });
+    });
 
-            expect((result as any).paths).toHaveProperty('/users');
-            expect((result as any).paths['/users']).toHaveProperty('get');
+    describe('clipboard and file exports', () => {
+        it('should write to clipboard', async () => {
+            await service.exportToClipboard('content');
+            expect(clipboard.writeText).toHaveBeenCalledWith('content');
         });
 
-        it('should add script warning to description when requests have scripts', () => {
-            const requests = [createMockRequest({
-                preRequestScript: 'console.log("test");'
-            })];
-            const result = exportService.generateOpenAPI(requests, metadata);
-
-            expect((result as any).info.description).toContain('⚠️');
-            expect((result as any).info.description).toContain('scripts');
+        it('should write to file', async () => {
+            await service.exportToFile('content', '/path/to/file');
+            expect(fs.writeFile).toHaveBeenCalledWith('/path/to/file', 'content', 'utf-8');
         });
+    });
 
-        it('should not throw when serialized to JSON', () => {
-            const requests = [createMockRequest()];
-            const result = exportService.generateOpenAPI(requests, metadata);
-
-            expect(() => JSON.stringify(result)).not.toThrow();
-            expect(() => JSON.parse(JSON.stringify(result))).not.toThrow();
+    describe('validation logic', () => {
+        it('should throw error for circular references in JSON', () => {
+            const circular: any = {};
+            circular.self = circular;
+            expect(() => (service as any).validateJSON(circular, 'Test')).toThrow('contains invalid JSON');
         });
     });
 });
