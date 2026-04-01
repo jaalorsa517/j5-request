@@ -244,9 +244,15 @@ export class ImportService {
 
                     const headers: Record<string, string> = {};
                     if (req.header) {
-                        for (const h of req.header) {
-                            if (!h.disabled) {
-                                headers[h.key] = h.value;
+                        if (Array.isArray(req.header)) {
+                            for (const h of req.header) {
+                                if (!h.disabled) {
+                                    headers[h.key] = h.value;
+                                }
+                            }
+                        } else if (typeof req.header === 'object') {
+                            for (const [key, value] of Object.entries(req.header)) {
+                                headers[key] = String(value);
                             }
                         }
                     }

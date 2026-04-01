@@ -1,49 +1,68 @@
+import { J5Request, ExecutionResult, ExecutionContext } from '@/shared/types';
+import { ScriptExecuter } from '@/main/services/ScriptExecuter';
+import { EnvironmentManager } from '@/main/services/EnvironmentManager';
 import http from 'http';
 import https from 'https';
 import { URL } from 'url';
 import FormData from 'form-data';
-import { createReadStream } from 'fs';
 import fsPromises from 'fs/promises';
-import { J5Request, SSLConfig } from '@/shared/types';
-import { ScriptExecuter, ExecutionContext } from '@/main/services/ScriptExecuter';
-import { EnvironmentManager } from '@/main/services/EnvironmentManager';
 import { resolveRelativePath } from '@/main/utils/pathUtils';
 
-export type ExecutionResult = {
-    success: boolean;
-    response?: any;
-    error?: string;
-    environment: Record<string, string>;
-    executionTime: number;
-};
-
-class NativeHttpClient {
+export class NativeHttpClient {
     async request(config: {
         method: string;
         url: string;
         headers: Record<string, string>;
-        params: Record<string, string>;
-        data: any;
-        httpsAgent?: https.Agent;
-    }): Promise<any> {
+        data?: any;
+        sslConfig?: {
+            clientCert?: string;
+            clientKey?: string;
+            ca?: string[];
+            rejectUnauthorized?: boolean;
+        };
+        projectRoot?: string;
+    }): Promise<{ status: number; statusText: string; headers: any; data: any }> {
+        const parsedUrl = new URL(config.url);
+        const isHttps = parsedUrl.protocol === 'https:';
+        const transport = isHttps ? https : http;
+
+        const options: any = {
+            method: config.method,
+            headers: { ...config.headers },
+            rejectUnauthorized: config.sslConfig?.rejectUnauthorized !== false,
+        };
+
+        if (isHttps && config.sslConfig) {
+            const root = config.projectRoot;
+            if (config.sslConfig.ca && config.sslConfig.ca.length > 0) {
+                try {
+                    const caCerts = await Promise.all(
+                        config.sslConfig.ca.map(p => fsPromises.readFile(root ? resolveRelativePath(p, root) : p))
+                    );
+                    options.ca = caCerts;
+                } catch (error: any) {
+                    throw new Error(`Failed to load SSL certificates (CA): ${error.message}`);
+                }
+            }
+            if (config.sslConfig.clientCert) {
+                try {
+                    const p = config.sslConfig.clientCert;
+                    options.cert = await fsPromises.readFile(root ? resolveRelativePath(p, root) : p);
+                } catch (error: any) {
+                    throw new Error(`Failed to load SSL certificates (Cert): ${error.message}`);
+                }
+            }
+            if (config.sslConfig.clientKey) {
+                try {
+                    const p = config.sslConfig.clientKey;
+                    options.key = await fsPromises.readFile(root ? resolveRelativePath(p, root) : p);
+                } catch (error: any) {
+                    throw new Error(`Failed to load SSL certificates (Key): ${error.message}`);
+                }
+            }
+        }
+
         return new Promise((resolve, reject) => {
-            const parsedUrl = new URL(config.url);
-            
-            // Add params to URL
-            Object.entries(config.params).forEach(([key, value]) => {
-                parsedUrl.searchParams.append(key, value);
-            });
-
-            const isHttps = parsedUrl.protocol === 'https:';
-            const transport = isHttps ? https : http;
-
-            const options: any = {
-                method: config.method.toUpperCase(),
-                headers: { ...config.headers },
-                agent: isHttps ? config.httpsAgent : undefined,
-            };
-
-            // Handle Body
             let bodyData: any = null;
             if (config.data) {
                 if (config.data instanceof FormData) {
@@ -61,6 +80,9 @@ class NativeHttpClient {
             }
 
             const req = transport.request(parsedUrl, options, (res) => {
+                res.on('error', (err) => {
+                    reject(err);
+                });
                 const chunks: any[] = [];
                 res.on('data', (chunk) => chunks.push(chunk));
                 res.on('end', () => {
@@ -68,9 +90,9 @@ class NativeHttpClient {
                     const responseData = buffer.toString();
                     
                     resolve({
-                        status: res.statusCode,
-                        statusText: res.statusMessage,
-                        headers: res.headers,
+                        status: res.statusCode || 0,
+                        statusText: res.statusMessage || '',
+                        headers: res.headers as any,
                         data: responseData
                     });
                 });
@@ -99,38 +121,57 @@ export class RequestExecutor {
     private envManager: EnvironmentManager;
     private httpClient: NativeHttpClient;
 
-    constructor() {
-        this.scriptExecuter = new ScriptExecuter();
-        this.envManager = new EnvironmentManager();
-        this.httpClient = new NativeHttpClient();
+    constructor(scriptExecuter?: ScriptExecuter, envManager?: EnvironmentManager, httpClient?: any) {
+        this.scriptExecuter = scriptExecuter || new ScriptExecuter();
+        this.envManager = envManager || new EnvironmentManager();
+        this.httpClient = httpClient || new NativeHttpClient();
     }
 
     async executeRequest(request: J5Request, environment: Record<string, string>, projectRoot?: string): Promise<ExecutionResult> {
         const startTime = Date.now();
         let currentEnv = { ...environment };
 
+        const reqHeaders = request.headers || {};
+        const reqParams = request.params || {};
+
         try {
             // 1. Pre-request Script
             if (request.preRequestScript) {
                 const context: ExecutionContext = { environment: currentEnv };
                 const result = this.scriptExecuter.execute(request.preRequestScript, context);
-                currentEnv = result.environment;
+                if (result.success === false) {
+                    return {
+                        success: false,
+                        error: `Pre-request Script Error: ${result.error}`,
+                        executionTime: Date.now() - startTime
+                    };
+                }
+                if (result.environment) {
+                    currentEnv = result.environment;
+                }
             }
 
             // 2. Resolve Variables
-            const resolvedUrl = this.envManager.resolveVariables(request.url, currentEnv);
+            let resolvedUrl = this.envManager.resolveVariables(request.url, currentEnv);
 
             const resolvedHeaders: Record<string, string> = {};
-            for (const [key, value] of Object.entries(request.headers)) {
+            for (const [key, value] of Object.entries(reqHeaders)) {
                 resolvedHeaders[key] = this.envManager.resolveVariables(value, currentEnv);
             }
 
             const resolvedParams: Record<string, string> = {};
-            for (const [key, value] of Object.entries(request.params)) {
+            for (const [key, value] of Object.entries(reqParams)) {
                 resolvedParams[key] = this.envManager.resolveVariables(value, currentEnv);
             }
 
-            // Body resolution
+            if (Object.keys(resolvedParams).length > 0) {
+                const urlObj = new URL(resolvedUrl);
+                for (const [key, value] of Object.entries(resolvedParams)) {
+                    urlObj.searchParams.append(key, value);
+                }
+                resolvedUrl = urlObj.toString();
+            }
+
             let resolvedData: any = null;
             if (request.body) {
                 if (request.body.type === 'json' && typeof request.body.content === 'string') {
@@ -138,62 +179,62 @@ export class RequestExecutor {
                     try {
                         resolvedData = JSON.parse(resolvedBodyStr);
                     } catch {
-                        resolvedData = resolvedBodyStr; // Failback to string if invalid
+                        resolvedData = resolvedBodyStr;
                     }
                 } else if (request.body.type === 'form-data' && typeof request.body.content === 'object') {
                     const formData = new FormData();
-
                     for (const [key, value] of Object.entries(request.body.content)) {
-                        if (typeof value === 'object' && value !== null && 'type' in value && value.type === 'file') {
-                            const filePath = (value as any).path;
-                            if (filePath) {
-                                const resolvedPath = this.envManager.resolveVariables(filePath, currentEnv);
-                                try {
-                                    formData.append(key, createReadStream(resolvedPath));
-                                } catch (e) {
-                                    console.error(`Failed to read file ${resolvedPath}`, e);
-                                }
+                        if (typeof value === 'object' && value !== null && 'type' in value && (value as any).type === 'file') {
+                            try {
+                                const fileContent = await fsPromises.readFile((value as any).path);
+                                formData.append(key, fileContent, { filename: (value as any).name || 'file' });
+                            } catch (e) {
+                                console.error('Error attaching file:', e);
                             }
                         } else {
-                            const resolvedValue = this.envManager.resolveVariables(String(value), currentEnv);
-                            formData.append(key, resolvedValue);
+                            formData.append(key, this.envManager.resolveVariables(String(value), currentEnv));
                         }
                     }
                     resolvedData = formData;
-                } else if (typeof request.body.content === 'string') {
-                    resolvedData = this.envManager.resolveVariables(request.body.content, currentEnv);
-                } else {
-                    resolvedData = request.body.content;
+                } else if (request.body.content) {
+                    resolvedData = this.envManager.resolveVariables(String(request.body.content), currentEnv);
                 }
             }
 
-            // 3. Prepare Config
-            let httpsAgent = undefined;
-            if (request.sslConfig) {
-                const agentOptions = await this.loadSSLCertificates(request.sslConfig, projectRoot);
-                httpsAgent = new https.Agent(agentOptions);
-            }
-
-            // 4. Execute Request
+            // 3. Execute HTTP Request
             const response = await this.httpClient.request({
                 method: request.method,
                 url: resolvedUrl,
                 headers: resolvedHeaders,
-                params: resolvedParams,
                 data: resolvedData,
-                httpsAgent: httpsAgent
+                sslConfig: request.sslConfig,
+                projectRoot
             });
 
             const executionTime = Date.now() - startTime;
 
-            // 5. Post-response Script
+            // 4. Post-response Script
             if (request.postResponseScript) {
-                const context: ExecutionContext = {
+                const context: ExecutionContext = { 
                     environment: currentEnv,
-                    response: response
+                    response: {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: response.headers,
+                        data: response.data
+                    }
                 };
-                const result = this.scriptExecuter.execute(request.postResponseScript, context);
-                currentEnv = result.environment;
+                const postResult = this.scriptExecuter.execute(request.postResponseScript, context);
+                if (postResult.success === false) {
+                    return {
+                        success: false,
+                        error: `Post-response Script Error: ${postResult.error}`,
+                        executionTime: Date.now() - startTime
+                    };
+                }
+                if (postResult.environment) {
+                    currentEnv = postResult.environment;
+                }
             }
 
             return {
@@ -206,56 +247,15 @@ export class RequestExecutor {
                     time: executionTime
                 },
                 environment: currentEnv,
-                executionTime: executionTime
+                executionTime
             };
 
         } catch (error: any) {
             return {
                 success: false,
-                error: error.message || 'Unknown error',
-                environment: currentEnv,
+                error: error.message || 'Error desconocido',
                 executionTime: Date.now() - startTime
             };
         }
-    }
-
-    private async loadSSLCertificates(config: SSLConfig, projectRoot?: string): Promise<https.AgentOptions> {
-        const agentOptions: https.AgentOptions = {};
-
-        if (config.rejectUnauthorized !== undefined) {
-            agentOptions.rejectUnauthorized = config.rejectUnauthorized;
-        }
-
-        const resolve = (p: string) => {
-            if (!projectRoot) return p;
-            return resolveRelativePath(p, projectRoot);
-        };
-
-        try {
-            if (config.ca && config.ca.length > 0) {
-                const caCerts: Buffer[] = [];
-                for (const caPath of config.ca) {
-                    const absolutePath = resolve(caPath);
-                    const content = await fsPromises.readFile(absolutePath);
-                    caCerts.push(content);
-                }
-                agentOptions.ca = caCerts;
-            }
-
-            if (config.clientCert) {
-                const absolutePath = resolve(config.clientCert);
-                agentOptions.cert = await fsPromises.readFile(absolutePath);
-            }
-
-            if (config.clientKey) {
-                const absolutePath = resolve(config.clientKey);
-                agentOptions.key = await fsPromises.readFile(absolutePath);
-            }
-        } catch (e: any) {
-            console.error("Error loading SSL certificates", e);
-            throw new Error(`Failed to load SSL certificates: ${e.message}`);
-        }
-
-        return agentOptions;
     }
 }

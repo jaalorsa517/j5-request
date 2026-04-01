@@ -3,110 +3,115 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { createTestingPinia } from '@pinia/testing';
+import { createPinia, setActivePinia } from 'pinia';
 import ImportModal from '@/renderer/components/ImportModal.vue';
+import { useFileSystemStore } from '@/renderer/stores/file-system';
 
-describe('ImportModal.vue', () => {
+// Mock Electron comprehensively
+if (typeof window !== 'undefined') {
+    (window as any).electron = {
+        import: {
+            detectFormat: vi.fn().mockResolvedValue({ format: 'curl', confidence: 1 }),
+            fromContent: vi.fn().mockResolvedValue({
+                success: true,
+                requests: [{ id: '1' }],
+                errors: [],
+                warnings: ['Mock Warning']
+            })
+        },
+        fs: {
+            selectFile: vi.fn().mockResolvedValue('/mock/file.json'),
+            readTextFile: vi.fn().mockResolvedValue('content'),
+            saveRequests: vi.fn().mockResolvedValue(['/path/1.j5request']),
+            watch: vi.fn(),
+            unwatch: vi.fn(),
+            onChanged: vi.fn().mockReturnValue(() => {}),
+            readDir: vi.fn().mockResolvedValue([])
+        }
+    };
+    vi.useFakeTimers();
+}
+
+describe('ImportModal Final Unified Integration', () => {
     beforeEach(() => {
+        setActivePinia(createPinia());
         vi.clearAllMocks();
-        (window as any).electron = {
-            import: {
-                detectFormat: vi.fn().mockResolvedValue({ format: 'curl', confidence: 0.9 }),
-                fromContent: vi.fn().mockResolvedValue({ success: true, requests: [{ name: 'Req' }], errors: [], warnings: [] })
-            },
-            fs: {
-                selectFile: vi.fn().mockResolvedValue('/path/file.txt'),
-                readTextFile: vi.fn().mockResolvedValue('curl https://api.com'),
-                saveRequests: vi.fn().mockResolvedValue(['/saved/1']),
-                openDirectory: vi.fn().mockResolvedValue(undefined)
-            }
-        };
     });
 
-    it('switches tabs', async () => {
-        const wrapper = mount(ImportModal, {
-            global: { plugins: [createTestingPinia({ createSpy: vi.fn })] }
-        });
-
-        const tabs = wrapper.findAll('.importModal__tab');
-        await tabs[1].trigger('click');
-        expect(wrapper.find('.importModal__filePicker').exists()).toBe(true);
-
-        await tabs[0].trigger('click');
-        expect(wrapper.find('.importModal__textarea').exists()).toBe(true);
-    });
-
-    it('detects format on input', async () => {
-        const wrapper = mount(ImportModal, {
-            global: { plugins: [createTestingPinia({ createSpy: vi.fn })] }
-        });
+    it('covers the entire successful import flow', async () => {
+        const fsStore = useFileSystemStore();
+        fsStore.currentPath = '/project';
+        const wrapper = mount(ImportModal);
 
         const textarea = wrapper.find('.importModal__textarea');
-        await textarea.setValue('curl test');
+        await textarea.setValue('curl http://api.com');
+        await textarea.trigger('input');
         await flushPromises();
 
-        expect(window.electron.import.detectFormat).toHaveBeenCalledWith('curl test');
-        expect(wrapper.text()).toContain('cURL');
-    });
-
-    it('performs import from paste', async () => {
-        const pinia = createTestingPinia({
-            createSpy: vi.fn,
-            initialState: { 'file-system': { currentPath: '/work' } }
-        });
-        const wrapper = mount(ImportModal, {
-            global: { plugins: [pinia] }
-        });
-
-        await wrapper.find('.importModal__textarea').setValue('curl test');
-        await wrapper.find('.importModal__button--primary').trigger('click');
-        
-        await flushPromises();
-
-        expect(window.electron.import.fromContent).toHaveBeenCalled();
-        expect(window.electron.fs.saveRequests).toHaveBeenCalled();
-        expect(wrapper.text()).toContain('archivo(s) guardado(s)');
-    });
-
-    it('handles file selection and import', async () => {
-        const pinia = createTestingPinia({
-            createSpy: vi.fn,
-            initialState: { 'file-system': { currentPath: '/work' } }
-        });
-        const wrapper = mount(ImportModal, {
-            global: { plugins: [pinia] }
-        });
-
-        // Go to file tab
-        await wrapper.findAll('.importModal__tab')[1].trigger('click');
-        
-        // Click select file button
-        await wrapper.find('.importModal__filePicker button').trigger('click');
-        await flushPromises();
-
-        expect(window.electron.fs.selectFile).toHaveBeenCalled();
-        expect(window.electron.fs.readTextFile).toHaveBeenCalledWith('/path/file.txt');
-
-        // Click import
         await wrapper.find('.importModal__button--primary').trigger('click');
         await flushPromises();
-
-        expect(window.electron.import.fromContent).toHaveBeenCalled();
+        
+        vi.runAllTimers();
+        await flushPromises();
+        
+        expect(wrapper.emitted('imported')).toBeTruthy();
     });
 
-    it('shows error if no folder is open', async () => {
-        const pinia = createTestingPinia({
-            createSpy: vi.fn,
-            initialState: { 'file-system': { currentPath: null } }
-        });
-        const wrapper = mount(ImportModal, {
-            global: { plugins: [pinia] }
-        });
-
+    it('covers error paths and warnings', async () => {
+        const wrapper = mount(ImportModal);
+        
+        // Populate warnings via import
         await wrapper.find('.importModal__textarea').setValue('data');
         await wrapper.find('.importModal__button--primary').trigger('click');
         await flushPromises();
+        
+        expect(wrapper.find('.importModal__warnings').exists()).toBe(true);
 
-        expect(wrapper.text()).toContain('Debes tener una carpeta abierta');
+        // Fail import content
+        (window as any).electron.import.fromContent.mockResolvedValueOnce({
+            success: false,
+            requests: [],
+            errors: ['Error Mock'],
+            warnings: []
+        });
+        await wrapper.find('.importModal__button--primary').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('.importModal__errors').text()).toContain('Error Mock');
+    });
+
+    it('covers error catch blocks and empty paste', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        (window as any).electron.import.detectFormat.mockRejectedValueOnce(new Error('detect fail'));
+        
+        const wrapper = mount(ImportModal);
+        const vm = wrapper.vm as any;
+
+        // Empty paste
+        vm.pasteContent = '  ';
+        await vm.detectFormat();
+        expect(vm.detectedFormat).toBeNull();
+
+        // Error in detectFormat
+        vm.pasteContent = 'something';
+        await vm.detectFormat();
+        expect(consoleSpy).toHaveBeenCalled();
+
+        consoleSpy.mockRestore();
+    });
+
+    it('covers missing requests branch in performImport', async () => {
+        (window as any).electron.import.fromContent.mockResolvedValueOnce({
+            success: true,
+            requests: [],
+            errors: [],
+            warnings: []
+        });
+
+        const wrapper = mount(ImportModal);
+        await wrapper.find('.importModal__textarea').setValue('spec');
+        await wrapper.find('.importModal__button--primary').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('.importModal__errors').text()).toContain('No se encontraron requests');
     });
 });

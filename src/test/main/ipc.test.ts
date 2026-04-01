@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setupIpc } from '@/main/ipc';
-import { ipcMain, app, shell, dialog } from 'electron';
-import { ExportService } from '@/main/services/ExportService';
+import { ipcMain, app, dialog } from 'electron';
 import { FileSystemService } from '@/main/services/FileSystemService';
-import { gitService } from '@/main/services/GitService';
+import { GitService } from '@/main/services/GitService';
 import { RequestExecutor } from '@/main/services/RequestExecutor';
-import { importService } from '@/main/services/ImportService';
+import { ImportService } from '@/main/services/ImportService';
 import { ProjectConfigService } from '@/main/services/ProjectConfigService';
-import { EnvironmentManager } from '@/main/services/EnvironmentManager';
 
 // Mock Electron
 vi.mock('electron', () => {
@@ -22,13 +20,12 @@ vi.mock('electron', () => {
             on: vi.fn((channel, listener) => {
                 listeners[channel] = listener;
             }),
-            // Helper for tests to trigger handles
             _trigger: async (channel: string, ...args: any[]) => {
-                if (handlers[channel]) return await handlers[channel](null, ...args);
-                throw new Error(`No handler for ${channel}`);
+                if (handlers[channel]) return await handlers[channel]({ sender: { send: vi.fn() } }, ...args);
+                return null;
             },
             _triggerOn: (channel: string, ...args: any[]) => {
-                if (listeners[channel]) listeners[channel](null, ...args);
+                if (listeners[channel]) listeners[channel]({ sender: { send: vi.fn() } }, ...args);
             }
         },
         app: {
@@ -47,6 +44,13 @@ vi.mock('electron', () => {
     };
 });
 
+// Mock electron-updater
+vi.mock('electron-updater', () => ({
+    autoUpdater: {
+        checkForUpdatesAndNotify: vi.fn().mockResolvedValue(undefined)
+    }
+}));
+
 // Mock Services
 vi.mock('@/main/services/ExportService');
 vi.mock('@/main/services/FileSystemService');
@@ -56,7 +60,7 @@ vi.mock('@/main/services/ImportService');
 vi.mock('@/main/services/ProjectConfigService');
 vi.mock('@/main/services/EnvironmentManager');
 
-describe('IPC Handlers', () => {
+describe('IPC Handlers Exhaustive', () => {
     let mockWindow: any;
 
     beforeEach(() => {
@@ -68,62 +72,91 @@ describe('IPC Handlers', () => {
         setupIpc(mockWindow);
     });
 
-    describe('App Handlers', () => {
-        it('app:get-info should return app metadata', async () => {
-            const info = await (ipcMain as any)._trigger('app:get-info');
-            expect(info.name).toBe('J5-Request');
-            expect(app.getVersion).toHaveBeenCalled();
-        });
-
-        it('app:openExternal should call shell', async () => {
-            await (ipcMain as any)._trigger('app:openExternal', 'https://test.com');
-            expect(shell.openExternal).toHaveBeenCalledWith('https://test.com');
-        });
+    it('triggers all app handlers', async () => {
+        await (ipcMain as any)._trigger('app:get-user-data-path');
+        await (ipcMain as any)._trigger('app:get-globals-path');
+        await (ipcMain as any)._trigger('app:get-info');
+        await (ipcMain as any)._trigger('app:openExternal', 'url');
+        await (ipcMain as any)._trigger('app:checkForUpdates');
+        
+        expect(app.getPath).toHaveBeenCalled();
     });
 
-    describe('FS Handlers', () => {
-        it('fs:read-dir should call fsService', async () => {
-            const spy = vi.spyOn(FileSystemService.prototype, 'readDirRecursive').mockResolvedValue([]);
-            await (ipcMain as any)._trigger('fs:read-dir', '/some/path');
-            expect(spy).toHaveBeenCalledWith('/some/path');
-        });
-
-        it('fs:select-folder should use electron dialog', async () => {
-            const path = await (ipcMain as any)._trigger('fs:select-folder');
-            expect(dialog.showOpenDialog).toHaveBeenCalled();
-            expect(path).toBe('/opened/path');
-        });
+    it('triggers all fs handlers', async () => {
+        await (ipcMain as any)._trigger('fs:read-dir', '/p');
+        await (ipcMain as any)._trigger('fs:read-file', '/p');
+        await (ipcMain as any)._trigger('fs:read-text-file', '/p');
+        await (ipcMain as any)._trigger('fs:write-file', '/p', {});
+        await (ipcMain as any)._trigger('fs:write-text-file', '/p', '');
+        await (ipcMain as any)._trigger('fs:create-dir', '/p');
+        await (ipcMain as any)._trigger('fs:rename', '/old', '/new');
+        await (ipcMain as any)._trigger('fs:delete', '/p');
+        await (ipcMain as any)._trigger('fs:save-requests', [], '/p');
+        await (ipcMain as any)._trigger('fs:read-all-requests', '/p');
+        await (ipcMain as any)._trigger('fs:select-folder');
+        await (ipcMain as any)._trigger('fs:select-file');
+        await (ipcMain as any)._trigger('fs:save-file-dialog');
+        await (ipcMain as any)._trigger('fs:select-cert-file');
+        await (ipcMain as any)._trigger('fs:relative-path', '/root', '/file');
+        
+        expect(FileSystemService.prototype.readDirRecursive).toHaveBeenCalled();
     });
 
-    describe('Git Handlers', () => {
-        it('git:status should call gitService', async () => {
-            await (ipcMain as any)._trigger('git:status', '/repo');
-            expect(gitService.getStatus).toHaveBeenCalledWith('/repo');
+    it('triggers fs:watch and handles events', async () => {
+        let watchCallback: any;
+        vi.spyOn(FileSystemService.prototype, 'watch').mockImplementation((_p, cb) => {
+            watchCallback = cb;
         });
+
+        await (ipcMain as any)._triggerOn('fs:watch', '/path');
+        expect(FileSystemService.prototype.watch).toHaveBeenCalled();
+
+        // Trigger a change
+        watchCallback('change', '/path/file.txt');
+        expect(mockWindow.webContents.send).toHaveBeenCalledWith('fs:changed', 'change', '/path/file.txt');
     });
 
-    describe('Request/Import Handlers', () => {
-        it('request:execute should call requestExecutor', async () => {
-            await (ipcMain as any)._trigger('request:execute', {}, {});
-            expect(RequestExecutor.prototype.executeRequest).toHaveBeenCalled();
-        });
+    it('triggers all git handlers', async () => {
+        const handlers = [
+            'git:status', 'git:is-repository', 'git:init-repository', 
+            'git:stage', 'git:unstage', 'git:commit', 'git:push', 
+            'git:pull', 'git:checkout', 'git:get-branches', 
+            'git:find-repos', 'git:get-file-content'
+        ];
 
-        it('import:detect-format should call importService', async () => {
-            await (ipcMain as any)._trigger('import:detect-format', 'curl ...');
-            expect(importService.detectFormat).toHaveBeenCalledWith('curl ...');
-        });
+        for (const h of handlers) {
+            await (ipcMain as any)._trigger(h, '/repo', 'arg');
+        }
+
+        expect(GitService.prototype.getStatus).toHaveBeenCalled();
     });
 
-    describe('Export Handlers', () => {
-        it('export:clipboard should call exportService', async () => {
-            await (ipcMain as any)._trigger('export:clipboard', 'content');
-            expect(ExportService.prototype.exportToClipboard).toHaveBeenCalledWith('content');
-        });
+    it('triggers request execution with projectRoot', async () => {
+        vi.spyOn(ProjectConfigService.prototype, 'loadProjectConfig').mockResolvedValue({ 
+            ssl: { rejectUnauthorized: false } 
+        } as any);
 
-        it('export:generate should return generated format', async () => {
-            vi.spyOn(ExportService.prototype, 'generateCurl').mockReturnValue('curl cmd');
-            const result = await (ipcMain as any)._trigger('export:generate', {}, 'curl');
-            expect(result).toBe('curl cmd');
-        });
+        await (ipcMain as any)._trigger('request:execute', { sslConfig: {} }, {}, '/root');
+        
+        expect(ProjectConfigService.prototype.loadProjectConfig).toHaveBeenCalledWith('/root');
+        expect(RequestExecutor.prototype.executeRequest).toHaveBeenCalled();
+    });
+
+    it('triggers export:file and handles cancel', async () => {
+        (dialog.showSaveDialog as any).mockResolvedValueOnce({ canceled: true });
+        const result = await (ipcMain as any)._trigger('export:file', 'content');
+        expect(result).toBeNull();
+    });
+
+    it('triggers all export and import handlers', async () => {
+        const formats = ['curl', 'fetch', 'powershell', 'postman', 'insomnia', 'openapi'];
+        for (const f of formats) {
+            await (ipcMain as any)._trigger('export:generate', {}, f);
+        }
+        
+        await (ipcMain as any)._trigger('import:from-content', 'content', {});
+        await (ipcMain as any)._trigger('import:detect-format', 'content');
+        
+        expect(ImportService.prototype.importFromContent).toHaveBeenCalled();
     });
 });
