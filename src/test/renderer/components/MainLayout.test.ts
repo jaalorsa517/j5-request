@@ -108,7 +108,8 @@ describe('MainLayout Component Direct VM Coverage', () => {
             { key: 'Escape', ctrl: false },
             { key: 't', ctrl: true },
             { key: 'w', ctrl: true },
-            { key: 's', ctrl: true }
+            { key: 's', ctrl: true },
+            { key: 'Enter', ctrl: true }
         ];
 
         shortcuts.forEach(s => {

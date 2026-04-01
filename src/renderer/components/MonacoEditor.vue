@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
     'update:modelValue': [value: string];
+    'execute': [];
 }>();
 
 const themeStore = useThemeStore();
@@ -48,6 +49,14 @@ const editorOptions = computed(() => ({
     readOnly: props.readOnly,
     theme: editorTheme.value,
 }));
+
+function handleMount(editor: any, monaco: any) {
+    if (!props.readOnly) {
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+            emit('execute');
+        });
+    }
+}
 </script>
 
 <template>
@@ -58,6 +67,7 @@ const editorOptions = computed(() => ({
             :options="editorOptions"
             :theme="editorTheme"
             @change="handleChange"
+            @mount="handleMount"
         />
     </div>
 </template>

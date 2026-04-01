@@ -231,6 +231,11 @@ function handleGlobalKeydown(e: KeyboardEvent) {
         e.preventDefault();
         saveRequest();
     }
+
+    if (isCtrlCmd && e.key === 'Enter') {
+        e.preventDefault();
+        requestStore.execute();
+    }
 }
 
 onMounted(() => {
