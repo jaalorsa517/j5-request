@@ -41,7 +41,10 @@
   },
   "linux": {
     "target": [
-      "AppImage"
+      "AppImage",
+      "deb",
+      "rpm",
+      "pacman"
     ],
     "maintainer": "jaalorsa517 <jaalorsa517@users.noreply.github.com>",
     "artifactName": "${productName}-Linux-${version}.${ext}"
