@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import logo from '@/renderer/assets/logo.png';
+import logo from '@/renderer/assets/logo.svg';
 
 defineProps<{
     isOpen: boolean;
