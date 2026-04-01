@@ -49,6 +49,7 @@ const editorLanguage = computed(() => {
                 v-model="requestStore.body"
                 :language="editorLanguage"
                 :read-only="false"
+                @execute="requestStore.execute()"
             />
         </div>
     </div>

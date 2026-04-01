@@ -30,6 +30,15 @@ if (typeof window !== 'undefined') {
             getGlobalsPath: vi.fn(),
             makeRelative: vi.fn(),
         },
+        app: {
+            getInfo: vi.fn().mockResolvedValue({
+                name: 'J5-Request',
+                version: '1.0.0',
+                author: 'jaalorsa',
+                description: 'Mock description'
+            }),
+            openExternal: vi.fn().mockResolvedValue(undefined),
+        },
         git: {
             getStatus: vi.fn(),
             isRepository: vi.fn(),

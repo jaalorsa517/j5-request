@@ -1,93 +1,99 @@
-import { validatePEMFormat, certificateExists, validateSSLConfig } from '@/main/utils/certificateValidator';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { validatePEMFormat, certificateExists, validateSSLConfig } from '@/main/utils/certificateValidator';
 import fs from 'fs/promises';
 
+vi.mock('fs/promises');
 
-// Mock fs/promises
-vi.mock('fs/promises', () => ({
-    default: {
-        readFile: vi.fn(),
-        access: vi.fn()
-    },
-    readFile: vi.fn(),
-    access: vi.fn()
-}));
-
-describe('certificateValidator', () => {
+describe('certificateValidator Exhaustive', () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
     describe('validatePEMFormat', () => {
-        it('should return true for valid PEM content', async () => {
-            const validPEM = '-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAg...\n-----END CERTIFICATE-----';
-            (fs.readFile as any).mockResolvedValue(validPEM);
-
-            const isValid = await validatePEMFormat('/path/to/cert.pem');
-            expect(isValid).toBe(true);
+        it('should return true for valid PEM', async () => {
+            (fs.readFile as any).mockResolvedValue('-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----');
+            expect(await validatePEMFormat('cert.pem')).toBe(true);
         });
 
-        it('should return false for invalid PEM content', async () => {
-            const invalidPEM = 'just some random text';
-            (fs.readFile as any).mockResolvedValue(invalidPEM);
-
-            const isValid = await validatePEMFormat('/path/to/invalid.pem');
-            expect(isValid).toBe(false);
+        it('should return false for non-PEM content', async () => {
+            (fs.readFile as any).mockResolvedValue('just text');
+            expect(await validatePEMFormat('cert.pem')).toBe(false);
         });
 
-        it('should return false if reading file fails', async () => {
-            (fs.readFile as any).mockRejectedValue(new Error('File not found'));
-
-            const isValid = await validatePEMFormat('/path/to/missing.pem');
-            expect(isValid).toBe(false);
+        it('should return false on read error', async () => {
+            (fs.readFile as any).mockRejectedValue(new Error('fail'));
+            expect(await validatePEMFormat('cert.pem')).toBe(false);
         });
     });
 
     describe('certificateExists', () => {
-        it('should return true if file exists', async () => {
-            (fs.access as any).mockResolvedValue(true);
-            const exists = await certificateExists('/path/to/file');
-            expect(exists).toBe(true);
+        it('should return true if access succeeds', async () => {
+            (fs.access as any).mockResolvedValue(undefined);
+            expect(await certificateExists('f')).toBe(true);
         });
 
-        it('should return false if file check fails', async () => {
-            (fs.access as any).mockRejectedValue(new Error('Not found'));
-            const exists = await certificateExists('/path/to/file');
-            expect(exists).toBe(false);
+        it('should return false if access fails', async () => {
+            (fs.access as any).mockRejectedValue(new Error());
+            expect(await certificateExists('f')).toBe(false);
         });
     });
 
     describe('validateSSLConfig', () => {
-        it('should return valid if no config provided options', async () => {
-            const result = await validateSSLConfig({}, '/root');
-            expect(result.valid).toBe(true);
+        const root = '/root';
+
+        it('validates mixed valid/invalid CA certs and absolute paths', async () => {
+            const config = {
+                ca: ['rel.pem', '/abs/cert.pem', 'missing.pem']
+            };
+
+            (fs.access as any).mockImplementation((p: string) => {
+                if (p.includes('missing.pem')) return Promise.reject(new Error());
+                return Promise.resolve();
+            });
+
+            (fs.readFile as any).mockImplementation((p: string) => {
+                if (p.includes('rel.pem')) return Promise.resolve('-----BEGIN'); // Invalid (no END)
+                return Promise.resolve('-----BEGIN-----END');
+            });
+
+            const res = await validateSSLConfig(config, root);
+            expect(res.valid).toBe(false);
+            expect(res.errors).toHaveLength(2); // One missing, one invalid PEM
         });
 
-        it('should validate CA certs presence and format', async () => {
-            (fs.access as any).mockResolvedValue(true);
-            (fs.readFile as any).mockResolvedValue('-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----');
-
-            const result = await validateSSLConfig({ ca: ['ca.pem'] }, '/root');
-            expect(result.valid).toBe(true);
-        });
-
-        it('should return errors for missing CA certs', async () => {
-            (fs.access as any).mockRejectedValue(new Error('Not found'));
-
-            const result = await validateSSLConfig({ ca: ['missing.pem'] }, '/root');
-            expect(result.valid).toBe(false);
-            expect(result.errors).toContain('CA Certificate not found: missing.pem');
-        });
-
-        it('should valid client cert and key', async () => {
-            (fs.access as any).mockResolvedValue(true);
-            (fs.readFile as any).mockResolvedValue('-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----'); // Reusing mock simple check
-
-            const result = await validateSSLConfig({
+        it('validates client cert and key missing or invalid', async () => {
+            const config = {
                 clientCert: 'cert.pem',
                 clientKey: 'key.pem'
-            }, '/root');
-            expect(result.valid).toBe(true);
+            };
+
+            // Case 1: Cert missing, Key invalid PEM
+            (fs.access as any).mockImplementation((p: string) => {
+                if (p.includes('cert.pem')) return Promise.reject(new Error());
+                return Promise.resolve();
+            });
+            (fs.readFile as any).mockResolvedValue('invalid');
+
+            const res = await validateSSLConfig(config, root);
+            expect(res.errors[0]).toContain('Client Certificate not found');
+            expect(res.errors[1]).toContain('Invalid PEM format for Client Key');
+
+            // Case 2: Cert exists but invalid PEM, Key missing
+            (fs.access as any).mockImplementation((p: string) => {
+                if (p.includes('key.pem')) return Promise.reject(new Error());
+                return Promise.resolve();
+            });
+            (fs.readFile as any).mockResolvedValue('invalid');
+            const res2 = await validateSSLConfig(config, root);
+            expect(res2.errors[0]).toContain('Invalid PEM format for Client Certificate');
+            expect(res2.errors[1]).toContain('Client Key not found');
+        });
+
+        it('returns valid true if all checks pass', async () => {
+            (fs.access as any).mockResolvedValue(undefined);
+            (fs.readFile as any).mockResolvedValue('-----BEGIN-----END');
+            const res = await validateSSLConfig({ ca: ['c'], clientCert: 'cc' }, root);
+            expect(res.valid).toBe(true);
         });
     });
 });

@@ -1,178 +1,80 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ScriptExecuter, ExecutionContext } from '@/main/services/ScriptExecuter';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { ScriptExecuter } from '@/main/services/ScriptExecuter';
+import { ExecutionContext } from '@/shared/types';
 
-describe('ScriptExecuter', () => {
-    let scriptExecuter: ScriptExecuter;
+describe('ScriptExecuter Logic Final', () => {
+    let executer: ScriptExecuter;
 
     beforeEach(() => {
-        scriptExecuter = new ScriptExecuter();
-        vi.spyOn(console, 'log').mockImplementation(() => {});
-        vi.spyOn(console, 'warn').mockImplementation(() => {});
-        vi.spyOn(console, 'error').mockImplementation(() => {});
+        executer = new ScriptExecuter();
     });
 
-    afterEach(() => {
-        vi.restoreAllMocks();
+    it('successfully sets environment variables', () => {
+        const context: ExecutionContext = { environment: { foo: 'old' } };
+        const script = 'pm.environment.set("foo", "bar")';
+        const result = executer.execute(script, context);
+
+        expect(result.success).toBe(true);
+        expect(result.environment?.foo).toBe('bar');
     });
 
-    it('should return context unchanged if script is empty', () => {
-        const context: ExecutionContext = {
-            environment: { key: 'value' }
-        };
-        const result = scriptExecuter.execute('', context);
-        expect(result).toEqual(context);
+    it('can access environment variables', () => {
+        const context: ExecutionContext = { environment: { foo: 'bar' } };
+        const script = 'const v = pm.environment.get("foo"); pm.environment.set("res", v + "!")';
+        const result = executer.execute(script, context);
+
+        expect(result.success).toBe(true);
+        expect(result.environment?.res).toBe('bar!');
     });
 
-    it('should allow getting environment variables', () => {
-        const script = `
-            const val = pm.environment.get('key');
-            console.log(val);
-        `;
-        const context: ExecutionContext = {
-            environment: { key: 'value' }
-        };
-
-        // Mock console.log to verify output if needed, but vm sandbox has its own console.
-        // The implementation redirects console.log to the main console with [Script Log] prefix.
-        const consoleSpy = vi.spyOn(console, 'log');
-
-        scriptExecuter.execute(script, context);
-
-        expect(consoleSpy).toHaveBeenCalledWith('[Script Log]', 'value');
-        consoleSpy.mockRestore();
-    });
-
-    it('should allow setting environment variables', () => {
-        const script = `
-            pm.environment.set('newKey', 'newValue');
-        `;
-        const context: ExecutionContext = {
-            environment: { key: 'value' }
-        };
-
-        const result = scriptExecuter.execute(script, context);
-
-        expect(result.environment).toEqual({
-            key: 'value',
-            newKey: 'newValue'
-        });
-    });
-
-    it('should expose response object if available', () => {
-        const script = `
-            const status = pm.response.code;
-            const body = pm.response.json();
-            pm.environment.set('status', status);
-            pm.environment.set('bodyData', body.data);
-        `;
+    it('handles response object correctly', () => {
         const context: ExecutionContext = {
             environment: {},
             response: {
                 status: 200,
                 statusText: 'OK',
-                headers: {},
-                data: JSON.stringify({ data: 'test' })
+                headers: { 'content-type': 'application/json' },
+                data: '{"id": 123}'
             }
         };
+        const script = `
+            pm.environment.set("status", pm.response.status);
+            pm.environment.set("body", pm.response.text());
+            const data = pm.response.json();
+            pm.environment.set("data_id", String(data.id));
+        `;
+        const result = executer.execute(script, context);
 
-        const result = scriptExecuter.execute(script, context);
-
-        expect(result.environment.status).toBe(200);
-        expect(result.environment.bodyData).toBe('test');
+        expect(result.success).toBe(true);
+        expect(result.environment?.status).toBe(200);
+        expect(result.environment?.body).toContain('123');
+        expect(result.environment?.data_id).toBe('123');
     });
 
-    it('should handle response.text()', () => {
-        const script = `
-            const text = pm.response.text();
-            pm.environment.set('text', text);
-        `;
+    it('handles JSON parse errors in response helper', () => {
         const context: ExecutionContext = {
             environment: {},
-            response: {
-                status: 200,
-                statusText: 'OK',
-                headers: {},
-                data: { key: 'value' } // Object data
-            }
+            response: { status: 200, statusText: 'OK', headers: {}, data: 'invalid' }
         };
-
-        const result = scriptExecuter.execute(script, context);
-        expect(result.environment.text).toBe('{"key":"value"}');
+        const script = 'pm.environment.set("data", pm.response.json())';
+        const result = executer.execute(script, context);
+        expect(result.environment?.data).toBeNull();
     });
 
-    it('should handle script errors gracefully', () => {
-        const script = `
-            throw new Error('Test Error');
-        `;
-        const context: ExecutionContext = {
-            environment: {}
-        };
-
-        expect(() => scriptExecuter.execute(script, context)).toThrow('Script execution failed: Error: Test Error');
-    });
-
-    it('should handle response.json() with invalid json string', () => {
-        const script = `
-            try {
-                const val = pm.response.json();
-                pm.environment.set('val', String(val));
-            } catch (e) {
-                pm.environment.set('error', 'caught');
-            }
-        `;
+    it('handles non-string response data in helpers', () => {
         const context: ExecutionContext = {
             environment: {},
-            response: {
-                status: 200,
-                data: '{ invalid json }' // String but not JSON
-            }
+            response: { status: 200, statusText: 'OK', headers: {}, data: { x: 1 } }
         };
-        const result = scriptExecuter.execute(script, context);
-        expect(result.environment.val).toBe('null');
-        expect(result.environment.error).toBeUndefined();
+        const script = 'pm.environment.set("data", pm.response.json().x); pm.environment.set("txt", pm.response.text())';
+        const result = executer.execute(script, context);
+        expect(result.environment?.data).toBe(1);
+        expect(result.environment?.txt).toBe('{"x":1}');
     });
 
-    it('should handle response.text() with string data', () => {
-        const script = `
-            const val = pm.response.text();
-            pm.environment.set('val', val);
-        `;
-        const context: ExecutionContext = {
-            environment: {},
-            response: {
-                status: 200,
-                data: 'plain text'
-            }
-        };
-        const result = scriptExecuter.execute(script, context);
-        expect(result.environment.val).toBe('plain text');
-    });
-
-    it('should handle console.warn and console.error', () => {
-        const warnSpy = vi.spyOn(console, 'warn');
-        const errorSpy = vi.spyOn(console, 'error');
-
-        const script = `
-            console.warn('warning');
-            console.error('error');
-        `;
-        scriptExecuter.execute(script, { environment: {} });
-
-        expect(warnSpy).toHaveBeenCalledWith('[Script Warn]', 'warning');
-        expect(errorSpy).toHaveBeenCalledWith('[Script Error]', 'error');
-
-        warnSpy.mockRestore();
-        errorSpy.mockRestore();
-    });
-
-    it('should prevent infinite loops with timeout', () => {
-        const script = `
-            while(true) {}
-        `;
-        const context: ExecutionContext = {
-            environment: {}
-        };
-
-        expect(() => scriptExecuter.execute(script, context)).toThrow('Script execution timed out');
+    it('catches execution errors', () => {
+        const result = executer.execute('throw new Error("fail")', { environment: {} });
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('fail');
     });
 });

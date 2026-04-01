@@ -7,26 +7,28 @@
   "directories": {
     "output": "release"
   },
+  "publish": {
+    "provider": "github",
+    "owner": "jaalorsa517",
+    "repo": "j5-request"
+  },
   "files": [
     "dist",
     "dist-electron"
   ],
   "mac": {
     "target": [
-      "dmg"
+      "zip"
     ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    "icon": "build/icon.png",
+    "artifactName": "${productName}-Mac-${version}-Portable.${ext}"
   },
   "win": {
+    "icon": "build/icon.png",
     "target": [
-      {
-        "target": "nsis",
-        "arch": [
-          "x64"
-        ]
-      }
+      "portable"
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    "artifactName": "${productName}-Windows-${version}-Portable.${ext}"
   },
   "nsis": {
     "oneClick": false,
@@ -38,6 +40,7 @@
     "target": [
       "AppImage"
     ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "maintainer": "jaalorsa517 <jaalorsa517@users.noreply.github.com>",
+    "artifactName": "${productName}-Linux-${version}-Portable.${ext}"
   }
 }

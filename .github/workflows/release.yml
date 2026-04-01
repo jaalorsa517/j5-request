@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Prepare Build Resources
+        shell: bash
+        run: |
+          mkdir -p build
+          cp public/icon.png build/icon.png
+
+      - name: Fix Icon Size (macOS)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          # sips is native to macOS
+          sips -z 512 512 public/icon.png --out build/icon.png
+
+      - name: Run Tests
+        run: pnpm test
+
+      - name: Build and Publish
+        run: pnpm run build --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

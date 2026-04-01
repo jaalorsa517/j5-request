@@ -56,8 +56,8 @@ const requestStore = useRequestStore();
 }
 
 .insecure-banner {
-    background-color: #ff4d4f;
-    color: white;
+    background-color: var(--error);
+    color: var(--text-primary);
     text-align: center;
     padding: 4px;
     font-size: 0.8rem;
