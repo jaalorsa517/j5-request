@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useRequestStore } from '@/renderer/stores/request';
@@ -29,14 +32,15 @@ vi.mock('@/renderer/stores/environment', () => ({
 }));
 
 // Mock window.electron
-vi.stubGlobal('window', {
-    electron: {
+// Use surgical stubs instead of replacing entire window
+if (typeof window !== 'undefined') {
+    (window as any).electron = {
         request: mockRequest,
         fs: {
             writeFile: vi.fn().mockResolvedValue(undefined)
         }
-    }
-});
+    };
+}
 
 describe('Request Store', () => {
     beforeEach(() => {

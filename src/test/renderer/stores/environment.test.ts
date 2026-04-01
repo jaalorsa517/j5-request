@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useEnvironmentStore } from '@/renderer/stores/environment';
@@ -15,13 +18,14 @@ const mockEnv = {
     save: vi.fn()
 };
 
-vi.stubGlobal('window', {
-    electron: {
+// Use surgical stubs instead of replacing entire window
+if (typeof window !== 'undefined') {
+    (window as any).electron = {
         fs: mockFs,
         environment: mockEnv
-    },
-    alert: vi.fn()
-});
+    };
+    (window as any).alert = vi.fn();
+}
 
 // Mock file-system store para obtener projectPath
 vi.mock('@/renderer/stores/file-system', () => ({

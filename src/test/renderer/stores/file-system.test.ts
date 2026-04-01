@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useFileSystemStore } from '@/renderer/stores/file-system';
@@ -6,6 +9,7 @@ import { useFileSystemStore } from '@/renderer/stores/file-system';
 const mockFs = {
     readDir: vi.fn(),
     readFile: vi.fn(),
+    readTextFile: vi.fn(),
     writeFile: vi.fn(),
     createDirectory: vi.fn(),
     rename: vi.fn(),
@@ -13,15 +17,21 @@ const mockFs = {
     watch: vi.fn(),
     stopWatch: vi.fn(),
     onChanged: vi.fn(),
+    getUserDataPath: vi.fn(),
+    getGlobalsPath: vi.fn(),
+    makeRelative: vi.fn(),
 };
 
-vi.stubGlobal('window', {
-    electron: {
+// Use surgical stubs instead of replacing entire window
+if (typeof window !== 'undefined') {
+    (window as any).electron = {
         fs: mockFs
-    },
-    navigator: {
-        userAgent: 'Linux'
-    }
+    };
+}
+
+// Ensure navigator is stubbed globally for environments where it might be missing
+vi.stubGlobal('navigator', {
+    userAgent: 'Linux'
 });
 
 // Mock dynamic import of request store
