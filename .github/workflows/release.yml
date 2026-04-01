@@ -37,8 +37,9 @@ jobs:
       - name: Fix Icon Size (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # macOS runner has ImageMagick installed
-          magick public/icon.png -resize 512x512! build/icon.png
+          mkdir -p build
+          # sips is native to macOS
+          sips -z 512 512 public/icon.png --out build/icon.png
 
       - name: Run Tests
         run: pnpm test
