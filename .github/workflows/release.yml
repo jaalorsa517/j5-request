@@ -34,12 +34,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Install Linux Dependencies
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libarchive-tools
-
       - name: Prepare Build Resources
         run: |
           mkdir -p build

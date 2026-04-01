@@ -18,22 +18,17 @@
   ],
   "mac": {
     "target": [
-      "dmg"
+      "zip"
     ],
     "icon": "build/icon.png",
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    "artifactName": "${productName}-Mac-${version}-Portable.${ext}"
   },
   "win": {
     "icon": "build/icon.png",
     "target": [
-      {
-        "target": "nsis",
-        "arch": [
-          "x64"
-        ]
-      }
+      "portable"
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    "artifactName": "${productName}-Windows-${version}-Portable.${ext}"
   },
   "nsis": {
     "oneClick": false,
@@ -43,12 +38,9 @@
   },
   "linux": {
     "target": [
-      "AppImage",
-      "deb",
-      "rpm",
-      "pacman"
+      "AppImage"
     ],
     "maintainer": "jaalorsa517 <jaalorsa517@users.noreply.github.com>",
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "artifactName": "${productName}-Linux-${version}-Portable.${ext}"
   }
 }
