@@ -34,10 +34,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Install Linux Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools
+
+      - name: Prepare Build Resources
+        run: |
+          mkdir -p build
+          cp public/icon.png build/icon.png
+
       - name: Fix Icon Size (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          mkdir -p build
           # sips is native to macOS
           sips -z 512 512 public/icon.png --out build/icon.png
 
