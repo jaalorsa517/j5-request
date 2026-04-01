@@ -35,12 +35,14 @@ jobs:
         run: pnpm install
 
       - name: Prepare Build Resources
+        shell: bash
         run: |
           mkdir -p build
           cp public/icon.png build/icon.png
 
       - name: Fix Icon Size (macOS)
         if: matrix.os == 'macos-latest'
+        shell: bash
         run: |
           # sips is native to macOS
           sips -z 512 512 public/icon.png --out build/icon.png
