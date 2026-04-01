@@ -49,9 +49,11 @@ describe('FileSystemService', () => {
                 }
             ];
 
-            (fs.readdir as any).mockImplementation(async (path: string) => {
-                if (path === dirPath) return mockEntries;
-                if (path === '/test/dir/subdir') return mockSubDirEntries;
+            const subdirPath = path.join(dirPath, 'subdir');
+
+            (fs.readdir as any).mockImplementation(async (p: string) => {
+                if (p === dirPath) return mockEntries;
+                if (p === subdirPath) return mockSubDirEntries;
                 return [];
             });
 

@@ -20,7 +20,8 @@ vi.mock('@/renderer/components/RequestTabBar.vue', () => ({ default: { template:
 vi.mock('@/renderer/components/ImportModal.vue', () => ({ default: { template: '<div>ImportModal</div>' } }));
 vi.mock('@/renderer/components/ContextMenu.vue', () => ({ default: { template: '<div>ContextMenu</div>' } }));
 vi.mock('@/renderer/components/ConfirmModal.vue', () => ({ default: { template: '<div>ConfirmModal</div>' } }));
-vi.mock('@/renderer/components/ExportDialog.vue', () => ({ default: { template: '<div>ExportDialog</div>' } }));
+// No direct reference found in previous read, but let's be sure about components
+vi.mock('@/renderer/components/AboutModal.vue', () => ({ default: { template: '<div>AboutModal</div>' } }));
 
 // Mock heavy dependencies
 if (typeof window !== 'undefined') {
