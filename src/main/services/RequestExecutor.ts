@@ -1,8 +1,9 @@
-import axios, { AxiosRequestConfig, Method } from 'axios';
+import http from 'http';
+import https from 'https';
+import { URL } from 'url';
 import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import fsPromises from 'fs/promises';
-import https from 'https';
 import { J5Request, SSLConfig } from '@/shared/types';
 import { ScriptExecuter, ExecutionContext } from '@/main/services/ScriptExecuter';
 import { EnvironmentManager } from '@/main/services/EnvironmentManager';
@@ -16,13 +17,92 @@ export type ExecutionResult = {
     executionTime: number;
 };
 
+class NativeHttpClient {
+    async request(config: {
+        method: string;
+        url: string;
+        headers: Record<string, string>;
+        params: Record<string, string>;
+        data: any;
+        httpsAgent?: https.Agent;
+    }): Promise<any> {
+        return new Promise((resolve, reject) => {
+            const parsedUrl = new URL(config.url);
+            
+            // Add params to URL
+            Object.entries(config.params).forEach(([key, value]) => {
+                parsedUrl.searchParams.append(key, value);
+            });
+
+            const isHttps = parsedUrl.protocol === 'https:';
+            const transport = isHttps ? https : http;
+
+            const options: any = {
+                method: config.method.toUpperCase(),
+                headers: { ...config.headers },
+                agent: isHttps ? config.httpsAgent : undefined,
+            };
+
+            // Handle Body
+            let bodyData: any = null;
+            if (config.data) {
+                if (config.data instanceof FormData) {
+                    const formHeaders = config.data.getHeaders();
+                    Object.assign(options.headers, formHeaders);
+                    bodyData = config.data;
+                } else if (typeof config.data === 'object') {
+                    bodyData = JSON.stringify(config.data);
+                    options.headers['Content-Type'] = 'application/json';
+                    options.headers['Content-Length'] = Buffer.byteLength(bodyData);
+                } else {
+                    bodyData = String(config.data);
+                    options.headers['Content-Length'] = Buffer.byteLength(bodyData);
+                }
+            }
+
+            const req = transport.request(parsedUrl, options, (res) => {
+                const chunks: any[] = [];
+                res.on('data', (chunk) => chunks.push(chunk));
+                res.on('end', () => {
+                    const buffer = Buffer.concat(chunks);
+                    const responseData = buffer.toString();
+                    
+                    resolve({
+                        status: res.statusCode,
+                        statusText: res.statusMessage,
+                        headers: res.headers,
+                        data: responseData
+                    });
+                });
+            });
+
+            req.on('error', (err) => {
+                reject(err);
+            });
+
+            if (bodyData) {
+                if (bodyData instanceof FormData) {
+                    bodyData.pipe(req);
+                } else {
+                    req.write(bodyData);
+                    req.end();
+                }
+            } else {
+                req.end();
+            }
+        });
+    }
+}
+
 export class RequestExecutor {
     private scriptExecuter: ScriptExecuter;
     private envManager: EnvironmentManager;
+    private httpClient: NativeHttpClient;
 
     constructor() {
         this.scriptExecuter = new ScriptExecuter();
         this.envManager = new EnvironmentManager();
+        this.httpClient = new NativeHttpClient();
     }
 
     async executeRequest(request: J5Request, environment: Record<string, string>, projectRoot?: string): Promise<ExecutionResult> {
@@ -61,36 +141,25 @@ export class RequestExecutor {
                         resolvedData = resolvedBodyStr; // Failback to string if invalid
                     }
                 } else if (request.body.type === 'form-data' && typeof request.body.content === 'object') {
-                    // Use 'form-data' package for Node.js environments
                     const formData = new FormData();
 
                     for (const [key, value] of Object.entries(request.body.content)) {
                         if (typeof value === 'object' && value !== null && 'type' in value && value.type === 'file') {
-                            // Handle file
                             const filePath = (value as any).path;
                             if (filePath) {
-                                // Resolve path variables just in case? Usually paths are absolute from picker but user might type invalid path
                                 const resolvedPath = this.envManager.resolveVariables(filePath, currentEnv);
                                 try {
                                     formData.append(key, createReadStream(resolvedPath));
                                 } catch (e) {
                                     console.error(`Failed to read file ${resolvedPath}`, e);
-                                    // Optionally append error or skip
                                 }
                             }
                         } else {
-                            // Handle text
                             const resolvedValue = this.envManager.resolveVariables(String(value), currentEnv);
                             formData.append(key, resolvedValue);
                         }
                     }
                     resolvedData = formData;
-
-                    // Fix for axios with form-data in Node: explicitly get headers including boundary
-                    const formHeaders = formData.getHeaders();
-                    // Merge with existing headers
-                    resolvedHeaders['Content-Type'] = formHeaders['content-type'];
-
                 } else if (typeof request.body.content === 'string') {
                     resolvedData = this.envManager.resolveVariables(request.body.content, currentEnv);
                 } else {
@@ -105,19 +174,15 @@ export class RequestExecutor {
                 httpsAgent = new https.Agent(agentOptions);
             }
 
-            const config: AxiosRequestConfig = {
-                method: request.method as Method,
+            // 4. Execute Request
+            const response = await this.httpClient.request({
+                method: request.method,
                 url: resolvedUrl,
                 headers: resolvedHeaders,
                 params: resolvedParams,
                 data: resolvedData,
-                validateStatus: () => true, // Don't throw on 4xx/5xx
-                transformResponse: [(data) => data], // Don't parse JSON automatically, we want raw first
                 httpsAgent: httpsAgent
-            };
-
-            // 4. Execute Request
-            const response = await axios(config);
+            });
 
             const executionTime = Date.now() - startTime;
 
@@ -161,7 +226,6 @@ export class RequestExecutor {
             agentOptions.rejectUnauthorized = config.rejectUnauthorized;
         }
 
-        // Helper to resolve path
         const resolve = (p: string) => {
             if (!projectRoot) return p;
             return resolveRelativePath(p, projectRoot);

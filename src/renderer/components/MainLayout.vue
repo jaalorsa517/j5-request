@@ -10,6 +10,7 @@ import ImportModal from '@/renderer/components/ImportModal.vue';
 import ContextMenu, { MenuItem } from '@/renderer/components/ContextMenu.vue';
 import ConfirmModal from '@/renderer/components/ConfirmModal.vue';
 import ExportDialog from '@/renderer/components/ExportDialog.vue';
+import AboutModal from '@/renderer/components/AboutModal.vue';
 import { J5FileEntry, J5Request } from '@/shared/types';
 import RequestTabBar from '@/renderer/components/RequestTabBar.vue';
 import { useFileSystemStore } from '@/renderer/stores/file-system';
@@ -25,6 +26,7 @@ const themeStore = useThemeStore();
 const showNewRequestModal = ref(false);
 const newRequestName = ref('');
 const showImportModal = ref(false);
+const showAboutModal = ref(false);
 
 // Context Menu State
 const showContextMenu = ref(false);
@@ -209,6 +211,7 @@ function handleGlobalKeydown(e: KeyboardEvent) {
         if (showExportDialog.value) showExportDialog.value = false;
         if (envStore.showManager) envStore.showManager = false;
         if (showDeleteConfirm.value) showDeleteConfirm.value = false;
+        if (showAboutModal.value) showAboutModal.value = false;
         if (showDiff.value) closeDiff();
     }
 
@@ -262,6 +265,13 @@ onUnmounted(() => {
                 </button>
             </div>
             <div class="activityBar__bottom">
+                <button
+                    class="activityBar__item"
+                    @click="showAboutModal = true"
+                    title="Acerca de"
+                >
+                    <span class="activityBar__icon">ℹ️</span>
+                </button>
                 <button
                     class="activityBar__item activityBar__item--theme"
                     @click="themeStore.toggleTheme()"
@@ -390,6 +400,8 @@ onUnmounted(() => {
             :requests="exportCollectionRequests"
             @close="showExportDialog = false"
         />
+
+        <AboutModal :is-open="showAboutModal" @close="showAboutModal = false" />
     </div>
 </template>
 

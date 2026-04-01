@@ -3,8 +3,9 @@
   "private": false,
   "version": "1.0.0-beta",
   "description": "Cliente HTTP API as Code minimalista y colaborativo.",
-  "author": "jaalorsa",
+  "author": "jaalorsa517",
   "license": "MIT",
+
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && electron-builder",
@@ -14,8 +15,8 @@
   },
   "dependencies": {
     "@guolao/vue-monaco-editor": "^1.6.0",
-    "axios": "^1.13.6",
     "chokidar": "^5.0.0",
+    "electron-updater": "^6.8.3",
     "form-data": "^4.0.5",
     "js-yaml": "^4.1.1",
     "monaco-editor": "^0.55.1",

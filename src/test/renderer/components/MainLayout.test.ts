@@ -38,6 +38,15 @@ if (typeof window !== 'undefined') {
         export: {
             generate: vi.fn(),
             toClipboard: vi.fn(),
+        },
+        app: {
+            getInfo: vi.fn().mockResolvedValue({
+                name: 'J5-Request',
+                version: '1.0.0',
+                author: 'jaalorsa',
+                description: 'Mock'
+            }),
+            openExternal: vi.fn().mockResolvedValue(undefined),
         }
     };
 }

@@ -7,6 +7,11 @@
   "directories": {
     "output": "release"
   },
+  "publish": {
+    "provider": "github",
+    "owner": "jaalorsa517",
+    "repo": "j5-request"
+  },
   "files": [
     "dist",
     "dist-electron"
@@ -36,8 +41,12 @@
   },
   "linux": {
     "target": [
-      "AppImage"
+      "AppImage",
+      "deb",
+      "rpm",
+      "pacman"
     ],
+    "maintainer": "jaalorsa517 <jaalorsa517@users.noreply.github.com>",
     "artifactName": "${productName}-Linux-${version}.${ext}"
   }
 }

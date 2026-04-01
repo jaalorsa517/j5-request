@@ -1,5 +1,6 @@
 import { app, BrowserWindow, utilityProcess } from 'electron'
 import { setupIpc } from '@/main/ipc'
+import { autoUpdater } from 'electron-updater'
 
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -63,7 +64,7 @@ function createWindow() {
     icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(__dirname, 'preload.js'),
       devTools: false
     },
   })
@@ -84,6 +85,26 @@ function createWindow() {
   }
 
   setupIpc(win);
+
+  // Auto-updater events
+  autoUpdater.on('checking-for-update', () => {
+    win?.webContents.send('updater:status', 'checking');
+  });
+  autoUpdater.on('update-available', () => {
+    win?.webContents.send('updater:status', 'available');
+  });
+  autoUpdater.on('update-not-available', () => {
+    win?.webContents.send('updater:status', 'uptodate');
+  });
+  autoUpdater.on('error', (err) => {
+    win?.webContents.send('updater:status', 'error', err.message);
+  });
+  autoUpdater.on('download-progress', (progressObj) => {
+    win?.webContents.send('updater:status', 'downloading', progressObj.percent);
+  });
+  autoUpdater.on('update-downloaded', () => {
+    win?.webContents.send('updater:status', 'ready');
+  });
 }
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -107,4 +128,8 @@ app.on('activate', () => {
 app.whenReady().then(() => {
   createWorker()
   createWindow()
+  
+  if (!VITE_DEV_SERVER_URL) {
+    autoUpdater.checkForUpdatesAndNotify()
+  }
 })

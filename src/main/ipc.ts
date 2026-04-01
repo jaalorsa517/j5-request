@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, app } from 'electron';
+import { ipcMain, BrowserWindow, app, shell } from 'electron';
 import path from 'path';
 import { FileSystemService } from '@/main/services/FileSystemService';
 import { gitService } from '@/main/services/GitService';
@@ -71,6 +71,25 @@ export function setupIpc(mainWindow: BrowserWindow) {
     ipcMain.handle('app:get-globals-path', () => {
         return path.join(app.getPath('userData'), 'globals.json');
     });
+
+    ipcMain.handle('app:get-info', () => {
+        return {
+            name: 'J5-Request',
+            version: app.getVersion(),
+            author: 'jaalorsa517',
+            description: 'Cliente HTTP API as Code minimalista y colaborativo.'
+        };
+    });
+
+    ipcMain.handle('app:openExternal', async (_, url: string) => {
+        await shell.openExternal(url);
+    });
+
+    ipcMain.handle('app:checkForUpdates', async () => {
+        const { autoUpdater } = await import('electron-updater');
+        return autoUpdater.checkForUpdatesAndNotify();
+    });
+
     ipcMain.handle('fs:read-dir', async (_, path: string) => {
         return fsService.readDirRecursive(path);
     });
