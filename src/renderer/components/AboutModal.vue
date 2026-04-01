@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import logo from '@/renderer/assets/logo.png';
 
 defineProps<{
     isOpen: boolean;
@@ -80,7 +81,7 @@ const getStatusText = () => {
         <div class="aboutModal__content glass">
             <div class="aboutModal__header">
                 <div class="aboutModal__titleGroup">
-                    <img src="/icon.png" alt="Logo" class="aboutModal__logo">
+                    <img :src="logo" alt="Logo" class="aboutModal__logo">
                     <h3 class="aboutModal__title">{{ appInfo?.name || 'J5-Request' }}</h3>
                 </div>
                 <button class="aboutModal__close" @click="emit('close')">

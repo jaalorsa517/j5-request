@@ -60,8 +60,12 @@ function createWorker() {
 }
 
 function createWindow() {
+  const iconPath = process.env.VITE_DEV_SERVER_URL 
+    ? path.join(process.env.APP_ROOT, 'public', 'icon.png')
+    : path.join(RENDERER_DIST, 'icon.png');
+
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
+    icon: iconPath,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
