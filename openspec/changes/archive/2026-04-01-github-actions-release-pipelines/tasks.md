@@ -14,9 +14,9 @@
 ## 3. Integración y Calidad
 
 - [x] 3.1 Añadir paso de validación (`pnpm test` y linting) previo a la construcción en el workflow.
-- [ ] 3.2 Verificar que el workflow se activa correctamente al crear un tag `v*`.
+- [x] 3.2 Verificar que el workflow se activa correctamente al crear un tag `v*`.
 
 ## 4. Validación Final
 
-- [ ] 4.1 Realizar una ejecución de prueba del workflow (manualmente o con un tag beta).
-- [ ] 4.2 Confirmar que todos los binarios (EXE, DMG, DEB, RPM, Pacman, AppImage) se suben correctamente a la release de GitHub.
+- [x] 4.1 Realizar una ejecución de prueba del workflow (manualmente o con un tag beta).
+- [x] 4.2 Confirmar que todos los binarios (EXE, DMG, DEB, RPM, Pacman, AppImage) se suben correctamente a la release de GitHub.
