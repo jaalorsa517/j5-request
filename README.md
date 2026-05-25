@@ -213,3 +213,20 @@ Los valores encriptados se almacenan inline en el JSON con formato autodescripti
 - Archivos existentes sin valores encriptados se cargan normalmente.
 - Al guardar, solo se encriptan las variables marcadas como `secret` a partir de ese momento.
 
+## Versión Portátil (Cross-Platform)
+
+Además de los instaladores nativos (.exe, .dmg, .AppImage), J5-Request ofrece una **Versión Portátil** minificada que permite ejecutar la aplicación sin requerir permisos de administrador.
+
+### Cómo instalar y usar:
+
+1. **Descargar**: Descarga el archivo `j5-request-portable.zip` desde la sección de **Releases** en GitHub.
+2. **Extraer**: Descomprime el archivo en cualquier carpeta de tu preferencia.
+3. **Instalar dependencias**: Abre una terminal en la carpeta extraída y ejecuta:
+   ```bash
+   npm install
+   ```
+   *(Esto descargará la versión correcta de Electron de forma local en esa carpeta).*
+4. **Ejecutar**: Una vez instalado, arranca la aplicación con:
+   ```bash
+   npm start
+   ```
