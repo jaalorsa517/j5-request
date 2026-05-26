@@ -78,7 +78,7 @@ export const useFileSystemStore = defineStore('file-system', () => {
         // We'll trust the main process write-file to handle absolute path.
         // We need the separator. Electron runs on Node, but this is renderer.
         // Let's use a simple slash, assuming Linux/macOS or that Electron normalization handles it.
-        const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
+        const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
         const newPath = `${currentPath.value}${separator}${finalName}`;
 
         const newRequest: J5Request = {
@@ -101,7 +101,7 @@ export const useFileSystemStore = defineStore('file-system', () => {
 
     async function createFolder(name: string) {
         if (!currentPath.value) return;
-        const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
+        const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
         const newPath = `${currentPath.value}${separator}${name}`;
         try {
             await window.electron.fs.createDirectory(newPath);
@@ -112,7 +112,7 @@ export const useFileSystemStore = defineStore('file-system', () => {
     }
 
     async function renameItem(oldPath: string, newName: string) {
-        const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
+        const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
         const directory = oldPath.substring(0, oldPath.lastIndexOf(separator));
         const newPath = `${directory}${separator}${newName}`;
         try {
@@ -133,7 +133,7 @@ export const useFileSystemStore = defineStore('file-system', () => {
             requestStore.closeTabByPath(path);
 
             // Limpiar selección si el archivo eliminado (o carpeta contenedora) estaba seleccionado
-            const separator = navigator.userAgent.includes('Win') ? '\\' : '/';
+            const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
             if (selectedFilePath.value && (selectedFilePath.value === path || selectedFilePath.value.startsWith(path + separator))) {
                 selectedFile.value = null;
                 selectedFilePath.value = null;
