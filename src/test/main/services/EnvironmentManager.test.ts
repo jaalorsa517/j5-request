@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EnvironmentManager } from '@/main/services/EnvironmentManager';
 import fs from 'fs/promises';
-
+import path from 'path';
 vi.mock('fs/promises');
 
 describe('EnvironmentManager', () => {
@@ -105,7 +105,7 @@ describe('EnvironmentManager', () => {
 
     describe('encryption integration', () => {
         const PROJECT_PATH = '/test/project';
-        const KEY_PATH = `${PROJECT_PATH}/environment.key`;
+        const KEY_PATH = path.join(PROJECT_PATH, 'environment.key');
         const encEnvManager = new EnvironmentManager();
 
         beforeEach(() => {
