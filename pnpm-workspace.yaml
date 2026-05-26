@@ -1,0 +1,8 @@
+allowBuilds:
+  '@parcel/watcher': true
+  electron-winstaller: true
+  esbuild: true
+  vue-demi: true
+minimumReleaseAgeExclude:
+  - '@vue/language-core@3.3.2'
+  - vue-tsc@3.3.2

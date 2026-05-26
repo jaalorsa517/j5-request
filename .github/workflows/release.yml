@@ -54,3 +54,17 @@ jobs:
         run: pnpm run build --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Portable Version
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          pnpm run build:portable
+          cd release && zip -r j5-request-portable.zip portable
+
+      - name: Upload Portable to Release
+        if: matrix.os == 'ubuntu-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/j5-request-portable.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
