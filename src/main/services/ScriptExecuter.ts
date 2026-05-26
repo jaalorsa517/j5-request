@@ -1,16 +1,12 @@
 import vm from 'vm';
-
-export type ExecutionContext = {
-    environment: Record<string, string>;
-    response?: any; // Expecting Axios-like structure: { status, statusText, headers, data }
-};
+import { ExecutionContext, ScriptResult } from '@/shared/types';
 
 export class ScriptExecuter {
-    execute(scriptCode: string, context: ExecutionContext): ExecutionContext {
+    execute(scriptCode: string, context: ExecutionContext): ScriptResult {
         const timeout = 500; // 500ms timeout per requirements
 
         if (!scriptCode || !scriptCode.trim()) {
-            return context;
+            return { success: true, environment: context.environment };
         }
 
         // Clone environment so we don't mutate input directly until done
@@ -26,25 +22,25 @@ export class ScriptExecuter {
             },
             response: (() => {
                 if (!context.response) return undefined;
-                console.log('[ScriptExecuter] Logic check | Status:', context.response.status, 'Text:', context.response.statusText);
+                const response = context.response;
                 return {
-                    code: context.response.status,
-                    status: context.response.status,
-                    statusText: context.response.statusText,
-                    headers: context.response.headers,
-                    body: context.response.data,
+                    code: response.status,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: response.headers,
+                    body: response.data,
                     // Helper methods
                     json: () => {
-                        if (typeof context.response.data === 'string') {
-                            try { return JSON.parse(context.response.data); } catch { return null; }
+                        if (typeof response.data === 'string') {
+                            try { return JSON.parse(response.data); } catch { return null; }
                         }
-                        return context.response.data;
+                        return response.data;
                     },
                     text: () => {
-                        if (typeof context.response.data === 'object') {
-                            return JSON.stringify(context.response.data);
+                        if (typeof response.data === 'object') {
+                            return JSON.stringify(response.data);
                         }
-                        return String(context.response.data);
+                        return String(response.data);
                     }
                 };
             })()
@@ -66,13 +62,15 @@ export class ScriptExecuter {
                 timeout: timeout,
                 displayErrors: true
             });
-        } catch (error) {
-            throw new Error(`Script execution failed: ${error}`);
+            return {
+                success: true,
+                environment: envCopy
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                error: error.message || String(error)
+            };
         }
-
-        return {
-            environment: envCopy,
-            response: context.response
-        };
     }
 }

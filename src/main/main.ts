@@ -1,11 +1,14 @@
 import { app, BrowserWindow, utilityProcess } from 'electron'
 import { setupIpc } from '@/main/ipc'
+import { autoUpdater } from 'electron-updater'
 
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const _dirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url || 'file:///'))
 
 // The built directory structure
 //
@@ -16,7 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // │ │ ├── main.js
 // │ │ └── preload.mjs
 // │
-process.env.APP_ROOT = path.join(__dirname, '..')
+process.env.APP_ROOT = path.join(_dirname, '..')
 
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -35,7 +38,7 @@ function createWorker() {
   // Note: Extension might be .mjs or .js depending on build. Trying .js first as it's common.
   // However, since preload is .mjs in the template, maybe worker is too?
   // Let's try to detect or fallback.
-  const workerPath = path.join(__dirname, 'worker.js')
+  const workerPath = path.join(_dirname, 'worker.js')
 
   console.log('Spawning worker from:', workerPath)
 
@@ -59,11 +62,15 @@ function createWorker() {
 }
 
 function createWindow() {
+  const iconPath = process.env.VITE_DEV_SERVER_URL 
+    ? path.join(process.env.APP_ROOT, 'public', 'icon.png')
+    : path.join(RENDERER_DIST, 'icon.png');
+
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
+    icon: iconPath,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'),
+      preload: path.join(_dirname, 'preload.js'),
       devTools: false
     },
   })
@@ -84,6 +91,26 @@ function createWindow() {
   }
 
   setupIpc(win);
+
+  // Auto-updater events
+  autoUpdater.on('checking-for-update', () => {
+    win?.webContents.send('updater:status', 'checking');
+  });
+  autoUpdater.on('update-available', () => {
+    win?.webContents.send('updater:status', 'available');
+  });
+  autoUpdater.on('update-not-available', () => {
+    win?.webContents.send('updater:status', 'uptodate');
+  });
+  autoUpdater.on('error', (err) => {
+    win?.webContents.send('updater:status', 'error', err.message);
+  });
+  autoUpdater.on('download-progress', (progressObj) => {
+    win?.webContents.send('updater:status', 'downloading', progressObj.percent);
+  });
+  autoUpdater.on('update-downloaded', () => {
+    win?.webContents.send('updater:status', 'ready');
+  });
 }
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -107,4 +134,8 @@ app.on('activate', () => {
 app.whenReady().then(() => {
   createWorker()
   createWindow()
+  
+  if (!VITE_DEV_SERVER_URL) {
+    autoUpdater.checkForUpdatesAndNotify()
+  }
 })

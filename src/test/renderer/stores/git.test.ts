@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useGitStore } from '@/renderer/stores/git';
@@ -18,11 +21,12 @@ const mockGit = {
     getFileContent: vi.fn(),
 };
 
-vi.stubGlobal('window', {
-    electron: {
+// Use surgical stubs instead of replacing entire window
+if (typeof window !== 'undefined') {
+    (window as any).electron = {
         git: mockGit
-    }
-});
+    };
+}
 
 describe('Git Store', () => {
     beforeEach(() => {

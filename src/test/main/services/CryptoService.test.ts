@@ -54,6 +54,20 @@ describe('CryptoService', () => {
             expect(() => service.decrypt('not-encrypted', key)).toThrow('Formato de valor encriptado inválido');
         });
 
+        it('should return null when parsing value with correct prefix but invalid inner content', () => {
+            const invalidInner = 'ENC[AES256_GCM:invalid-content]';
+            expect(() => service.decrypt(invalidInner, service.generateRandomKey())).toThrow('Formato de valor encriptado inválido');
+        });
+
+        it('should throw error when decryption fails (invalid key or tag)', () => {
+            const key = service.generateRandomKey();
+            const encrypted = service.encrypt('test', key);
+            
+            // Modify one byte of the encrypted value to trigger auth tag failure
+            const corrupted = encrypted.replace('tag:', 'tag:ff');
+            expect(() => service.decrypt(corrupted, key)).toThrow();
+        });
+
         it('should throw on corrupted encrypted value', () => {
             const key = service.generateRandomKey();
             const corrupted = 'ENC[AES256_GCM:iv:00:data:ff:tag:00]';

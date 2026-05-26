@@ -46,6 +46,16 @@ contextBridge.exposeInMainWorld('electron', {
     getGlobalsPath: () => ipcRenderer.invoke('app:get-globals-path'),
     makeRelative: (root: string, file: string) => ipcRenderer.invoke('fs:relative-path', root, file),
   },
+  app: {
+    getInfo: () => ipcRenderer.invoke('app:get-info'),
+    openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+    checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates'),
+    onUpdaterStatus: (callback: (status: string, data?: any) => void) => {
+      const listener = (_e: any, status: string, data?: any) => callback(status, data);
+      ipcRenderer.on('updater:status', listener);
+      return () => ipcRenderer.removeListener('updater:status', listener);
+    }
+  },
   git: {
     getStatus: (path: string) => ipcRenderer.invoke('git:status', path),
     isRepository: (path: string) => ipcRenderer.invoke('git:is-repository', path),

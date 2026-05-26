@@ -1,54 +1,124 @@
-import { describe, it, expect } from 'vitest';
-import { mergeSSLConfigs } from '@/main/services/ProjectConfigService';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ProjectConfigService, mergeSSLConfigs } from '@/main/services/ProjectConfigService';
 import { SSLConfig } from '@/shared/types';
+import fs from 'fs/promises';
+import path from 'path';
+
+vi.mock('fs/promises');
 
 describe('ProjectConfigService', () => {
-    describe('mergeSSLConfigs', () => {
-        it('should return undefined if both configs are undefined', () => {
-            expect(mergeSSLConfigs(undefined, undefined)).toBeUndefined();
+    let service: ProjectConfigService;
+    const projectRoot = '/test/project';
+    const configPath = path.join(projectRoot, '.j5project.json');
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        service = new ProjectConfigService();
+    });
+
+    describe('loadProjectConfig', () => {
+        it('should load and parse project config file', async () => {
+            const mockConfig = { ssl: { rejectUnauthorized: false } };
+            (fs.readFile as any).mockResolvedValue(JSON.stringify(mockConfig));
+
+            const result = await service.loadProjectConfig(projectRoot);
+
+            expect(fs.readFile).toHaveBeenCalledWith(configPath, 'utf-8');
+            expect(result).toEqual(mockConfig);
         });
 
-        it('should return project config if request config is undefined', () => {
-            const projectSSL: SSLConfig = { rejectUnauthorized: false };
-            expect(mergeSSLConfigs(projectSSL, undefined)).toEqual(projectSSL);
+        it('should return null if file does not exist (ENOENT)', async () => {
+            const error = new Error('File not found');
+            (error as any).code = 'ENOENT';
+            (fs.readFile as any).mockRejectedValue(error);
+
+            const result = await service.loadProjectConfig(projectRoot);
+
+            expect(result).toBeNull();
         });
 
-        it('should return request config if project config is undefined', () => {
-            const requestSSL: SSLConfig = { rejectUnauthorized: true };
-            expect(mergeSSLConfigs(undefined, requestSSL)).toEqual(requestSSL);
+        it('should log error and return null for other errors', async () => {
+            const error = new Error('Permission denied');
+            (error as any).code = 'EACCES';
+            (fs.readFile as any).mockRejectedValue(error);
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            const result = await service.loadProjectConfig(projectRoot);
+
+            expect(result).toBeNull();
+            expect(consoleSpy).toHaveBeenCalled();
+            consoleSpy.mockRestore();
+        });
+    });
+
+    describe('saveProjectConfig', () => {
+        it('should stringify and save config to file', async () => {
+            const mockConfig = { ssl: { ca: ['ca.pem'] } };
+            (fs.writeFile as any).mockResolvedValue(undefined);
+
+            await service.saveProjectConfig(projectRoot, mockConfig as any);
+
+            expect(fs.writeFile).toHaveBeenCalledWith(
+                configPath,
+                JSON.stringify(mockConfig, null, 2),
+                'utf-8'
+            );
         });
 
-        it('should override project config with request config', () => {
-            const projectSSL: SSLConfig = {
-                rejectUnauthorized: true,
-                ca: ['root-ca.pem'],
-                clientCert: 'client.pem'
-            };
-            const requestSSL: SSLConfig = {
-                rejectUnauthorized: false,
-                clientCert: 'override-client.pem',
-                ca: [] // this triggers fallback to project CA based on new rules
-            };
+        it('should log and throw error if save fails', async () => {
+            const error = new Error('Disk full');
+            (fs.writeFile as any).mockRejectedValue(error);
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-            const merged = mergeSSLConfigs(projectSSL, requestSSL);
-
-            expect(merged).toEqual({
-                rejectUnauthorized: false,
-                ca: ['root-ca.pem'], // From project due to empty array rule
-                clientCert: 'override-client.pem', // From request
-                clientKey: undefined // Not present in either
-            });
+            await expect(service.saveProjectConfig(projectRoot, {} as any)).rejects.toThrow('Disk full');
+            expect(consoleSpy).toHaveBeenCalled();
+            consoleSpy.mockRestore();
         });
+    });
+});
 
-        it('should prefer request properties (even undefined/null explicitly?? NO)', () => {
-            // mergeSSLConfigs implementation uses ?? for coalescing.
-            // ca: requestSSL.ca ?? projectSSL.ca
-            // So if requestSSL.ca is undefined, uses projectSSL.ca
+describe('mergeSSLConfigs', () => {
+    const projectSSL: SSLConfig = {
+        ca: ['project-ca.pem'],
+        clientCert: 'project-cert.pem',
+        clientKey: 'project-key.pem',
+        rejectUnauthorized: true
+    };
 
-            const projectSSL: SSLConfig = { ca: ['ca.pem'] };
-            const requestSSL: SSLConfig = { rejectUnauthorized: false }; // ca undefined
+    it('should return request config if project config is undefined', () => {
+        const requestSSL: SSLConfig = { ca: ['req.pem'] };
+        expect(mergeSSLConfigs(undefined, requestSSL)).toEqual(requestSSL);
+    });
 
-            expect(mergeSSLConfigs(projectSSL, requestSSL)?.ca).toEqual(['ca.pem']);
+    it('should return project config if request config is undefined', () => {
+        expect(mergeSSLConfigs(projectSSL, undefined)).toEqual(projectSSL);
+    });
+
+    it('should override project config with request config values', () => {
+        const requestSSL: SSLConfig = {
+            ca: ['req-ca.pem'],
+            rejectUnauthorized: false
+        };
+
+        const result = mergeSSLConfigs(projectSSL, requestSSL);
+
+        expect(result).toEqual({
+            ca: ['req-ca.pem'], // Overridden
+            clientCert: 'project-cert.pem', // From project
+            clientKey: 'project-key.pem', // From project
+            rejectUnauthorized: false // Overridden
         });
+    });
+
+    it('should fallback to project values if request values are null/empty', () => {
+        const requestSSL: SSLConfig = {
+            ca: [], // Empty array
+            clientCert: undefined
+        };
+
+        const result = mergeSSLConfigs(projectSSL, requestSSL);
+
+        expect(result?.ca).toEqual(['project-ca.pem']);
+        expect(result?.clientCert).toBe('project-cert.pem');
     });
 });

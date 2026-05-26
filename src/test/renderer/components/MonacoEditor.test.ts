@@ -10,7 +10,7 @@ import MonacoEditor from '@/renderer/components/MonacoEditor.vue';
 vi.mock('@guolao/vue-monaco-editor', () => ({
     VueMonacoEditor: {
         template: '<div class="vue-monaco-editor-mock"></div>',
-        emits: ['update:value', 'change'],
+        emits: ['update:value', 'change', 'mount'],
         props: ['value'],
         setup(_props: any, { _emit }: any) {
             void _emit;
@@ -66,5 +66,65 @@ describe('MonacoEditor.vue', () => {
 
         expect(wrapper.emitted('update:modelValue')).toBeTruthy();
         expect(wrapper.emitted('update:modelValue')![0]).toEqual(['new content']);
+    });
+
+    it('registers execute command on mount and emits execute event', async () => {
+        const wrapper = mount(MonacoEditor, {
+            props: {
+                modelValue: '',
+                readOnly: false
+            },
+            global: {
+                plugins: [createTestingPinia({ createSpy: vi.fn })]
+            }
+        });
+
+        const { VueMonacoEditor } = await import('@guolao/vue-monaco-editor');
+        const editorComponent = wrapper.findComponent(VueMonacoEditor);
+
+        const mockEditor = {
+            addCommand: vi.fn()
+        };
+        const mockMonaco = {
+            KeyMod: { CtrlCmd: 100 },
+            KeyCode: { Enter: 13 }
+        };
+
+        await editorComponent.vm.$emit('mount', mockEditor, mockMonaco);
+
+        expect(mockEditor.addCommand).toHaveBeenCalledWith(109, expect.any(Function));
+
+        // Simulate command trigger
+        const commandCallback = mockEditor.addCommand.mock.calls[0][1];
+        commandCallback();
+
+        expect(wrapper.emitted('execute')).toBeTruthy();
+    });
+
+    it('does not register execute command if readOnly is true', async () => {
+        const wrapper = mount(MonacoEditor, {
+            props: {
+                modelValue: '',
+                readOnly: true
+            },
+            global: {
+                plugins: [createTestingPinia({ createSpy: vi.fn })]
+            }
+        });
+
+        const { VueMonacoEditor } = await import('@guolao/vue-monaco-editor');
+        const editorComponent = wrapper.findComponent(VueMonacoEditor);
+
+        const mockEditor = {
+            addCommand: vi.fn()
+        };
+        const mockMonaco = {
+            KeyMod: { CtrlCmd: 100 },
+            KeyCode: { Enter: 13 }
+        };
+
+        await editorComponent.vm.$emit('mount', mockEditor, mockMonaco);
+
+        expect(mockEditor.addCommand).not.toHaveBeenCalled();
     });
 });

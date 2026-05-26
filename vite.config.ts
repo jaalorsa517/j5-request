@@ -15,10 +15,7 @@ export default defineConfig({
     electron({
       main: {
         // Shortcut of `build.lib.entry`.
-        entry: {
-          main: 'src/main/main.ts',
-          worker: 'src/worker/worker.ts',
-        },
+        entry: 'src/main/main.ts',
         vite: {
           resolve: {
             alias: {
@@ -39,6 +36,18 @@ export default defineConfig({
         // https://github.com/electron-vite/vite-plugin-electron-renderer/issues/78#issuecomment-2053600808
         ? undefined
         : {},
+    }),
+    electron({
+      main: {
+        entry: 'src/worker/worker.ts',
+        vite: {
+          resolve: {
+            alias: {
+              '@': path.resolve(__dirname, './src'),
+            },
+          },
+        },
+      },
     }),
   ],
   build: {

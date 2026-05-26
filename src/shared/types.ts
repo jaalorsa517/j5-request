@@ -1,6 +1,6 @@
 export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
 
-export type RequestBodyType = 'json' | 'form-data' | 'url-encoded' | 'raw';
+export type RequestBodyType = 'json' | 'form-data' | 'url-encoded' | 'raw' | 'text' | 'xml' | 'none';
 
 export type J5RequestBody = {
     type: RequestBodyType;
@@ -41,7 +41,6 @@ export type J5FileEntry = {
 export type J5Collection = {
     name: string;
     path: string;
-    // Metadata for collection could go here in the future
 };
 
 export type GitStatus = {
@@ -77,8 +76,8 @@ export type RequestState = {
     headers: Record<string, string>;
     params: Record<string, string>;
     body: string;
-    bodyFormData: Record<string, string | { type: 'file', path: string }>;
-    bodyType: 'json' | 'text' | 'xml' | 'form-data' | 'none';
+    bodyFormData: Record<string, string | { type: 'file', path: string, name?: string }>;
+    bodyType: RequestBodyType;
     preRequestScript: string;
     postResponseScript: string;
     sslConfig?: SSLConfig;
@@ -101,4 +100,35 @@ export type RequestTab = {
     response: ResponseState | null;
     isDirty: boolean;
     originalState: string; // To track dirty state
+};
+
+// Execution related types
+export type ExecutionContext = {
+    environment: Record<string, string>;
+    response?: {
+        status: number;
+        statusText: string;
+        headers: any;
+        data: any;
+    };
+};
+
+export type ScriptResult = {
+    success: boolean;
+    environment?: Record<string, string>;
+    error?: string;
+};
+
+export type ExecutionResult = {
+    success: boolean;
+    response?: {
+        status: number;
+        statusText: string;
+        headers: Record<string, string | string[]>;
+        data: any;
+        time: number;
+    };
+    environment?: Record<string, string>;
+    error?: string;
+    executionTime: number;
 };

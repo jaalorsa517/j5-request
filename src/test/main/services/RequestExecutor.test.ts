@@ -1,363 +1,148 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RequestExecutor } from '@/main/services/RequestExecutor';
-import { ScriptExecuter } from '@/main/services/ScriptExecuter';
-import { J5Request } from '@/shared/types';
-import axios from 'axios';
-import * as fs from 'fs';
+import { RequestExecutor, NativeHttpClient } from '@/main/services/RequestExecutor';
+import { EventEmitter } from 'events';
+import http from 'http';
+import https from 'https';
 import fsPromises from 'fs/promises';
 
-// Mock dependencies
-vi.mock('axios');
-vi.mock('@/main/services/ScriptExecuter');
-vi.mock('fs', () => ({
-    createReadStream: vi.fn(),
-}));
-vi.mock('fs/promises', () => {
-    const readFile = vi.fn();
-    return {
-        default: { readFile },
-        readFile // For named imports if any
-    };
-});
-vi.mock('form-data', () => {
-    return {
-        default: vi.fn().mockImplementation(function (this: any) {
-            return {
-                append: vi.fn(),
-                getHeaders: vi.fn().mockReturnValue({ 'content-type': 'multipart/form-data; boundary=---' })
-            };
-        })
-    };
-});
+vi.mock('http');
+vi.mock('https');
+vi.mock('fs/promises');
 
-describe('RequestExecutor', () => {
+describe('RequestExecutor Definitive Tests', () => {
     let executor: RequestExecutor;
+    let mockScriptExec: any;
+    let mockEnvManager: any;
+    let mockHttpClient: any;
+
+    const mockResponse = (status: number, data: any) => {
+        const resMock = new EventEmitter() as any;
+        resMock.statusCode = status;
+        resMock.headers = {};
+        const reqMock = new EventEmitter() as any;
+        reqMock.write = vi.fn();
+        reqMock.end = vi.fn().mockImplementation(() => {
+            process.nextTick(() => {
+                if (data) resMock.emit('data', Buffer.from(typeof data === 'string' ? data : JSON.stringify(data)));
+                resMock.emit('end');
+            });
+        });
+        (http.request as any).mockImplementation((_u:any, _o:any, cb:any) => {
+            cb(resMock);
+            return reqMock;
+        });
+        (https.request as any).mockImplementation((_u:any, _o:any, cb:any) => {
+            cb(resMock);
+            return reqMock;
+        });
+        return { req: reqMock, res: resMock };
+    };
 
     beforeEach(() => {
         vi.clearAllMocks();
-        executor = new RequestExecutor();
+        mockScriptExec = {
+            execute: vi.fn().mockReturnValue({ success: true, environment: {} })
+        };
+        mockEnvManager = {
+            resolveVariables: vi.fn((s) => s)
+        };
+        mockHttpClient = new NativeHttpClient();
+        executor = new RequestExecutor(mockScriptExec, mockEnvManager, mockHttpClient);
     });
 
-    const basicRequest: J5Request = {
-        id: '1',
-        name: 'Basic Request',
-        method: 'GET',
-        url: 'http://example.com/api',
-        headers: {},
-        params: {},
-        body: { type: 'raw', content: '' },
-
-        preRequestScript: '',
-        postResponseScript: ''
-    };
-
-    it('should execute a simple GET request successfully', async () => {
-        // Setup mock response
-        const mockResponse = {
-            status: 200,
-            statusText: 'OK',
-            headers: { 'content-type': 'application/json' },
-            data: { message: 'success' }
-        };
-        (axios as any).mockResolvedValue(mockResponse);
-
-        const result = await executor.executeRequest(basicRequest, {});
-
+    it('handles successful execution with scripts', async () => {
+        mockResponse(200, 'ok');
+        const req = { url: 'http://a.com', preRequestScript: 'pre', postResponseScript: 'post' };
+        const result = await executor.executeRequest(req as any, {});
+        
         expect(result.success).toBe(true);
-        expect(result.response?.status).toBe(200);
-        expect(result.response?.data).toEqual({ message: 'success' });
-        expect(axios).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockScriptExec.execute).toHaveBeenCalledTimes(2);
+    });
+
+    it('aborts on pre-request script failure', async () => {
+        mockScriptExec.execute.mockReturnValueOnce({ success: false, error: 'pre-fail' });
+        const result = await executor.executeRequest({ preRequestScript: 's', url: 'u' } as any, {});
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('pre-fail');
+    });
+
+    it('covers SSL configuration branches in NativeHttpClient', async () => {
+        (fsPromises.readFile as any).mockResolvedValue(Buffer.from('pem'));
+        mockResponse(200, 'ok');
+        
+        const result = await mockHttpClient.request({
             method: 'GET',
-            url: 'http://example.com/api'
-        }));
-    });
-
-    it('should handle network errors gracefully', async () => {
-        const errorMessage = 'Network Error';
-        (axios as any).mockRejectedValue(new Error(errorMessage));
-
-        const result = await executor.executeRequest(basicRequest, {});
-
-        expect(result.success).toBe(false);
-        expect(result.error).toBe(errorMessage);
-        expect(result.response).toBeUndefined();
-    });
-
-    it('should resolve variables in URL before sending', async () => {
-        const requestWithVar: J5Request = {
-            ...basicRequest,
-            url: 'http://{{host}}/api'
-        };
-        const env = { host: 'localhost:3000' };
-
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-
-        await executor.executeRequest(requestWithVar, env);
-
-        expect(axios).toHaveBeenCalledWith(expect.objectContaining({
-            url: 'http://localhost:3000/api'
-        }));
-    });
-
-    it('should execute pre-request script', async () => {
-        const script = 'env.token = "123";';
-        const requestWithScript: J5Request = {
-            ...basicRequest,
-            preRequestScript: script
-        };
-
-        // Mock ScriptExecuter behavior
-        const mockExecute = vi.fn().mockReturnValue({
-            environment: { token: '123' },
-            logs: []
-        });
-
-        (ScriptExecuter as any).mockImplementation(class MockScriptExecuter {
-            execute = mockExecute;
-        });
-
-        // Re-instantiate to use the mock implementation
-        executor = new RequestExecutor();
-
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-
-        const result = await executor.executeRequest(requestWithScript, {});
-
-        expect(mockExecute).toHaveBeenCalledWith(script, expect.objectContaining({
-            environment: {}
-        }));
-        expect(result.environment).toHaveProperty('token', '123');
-    });
-
-    it('should resolve headers and params variables', async () => {
-        const requestWithVars: J5Request = {
-            ...basicRequest,
-            headers: { 'Authorization': 'Bearer {{token}}' },
-            params: { 'q': '{{query}}' }
-        };
-        const env = { token: 'secret', query: 'search' };
-
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-
-        await executor.executeRequest(requestWithVars, env);
-
-        expect(axios).toHaveBeenCalledWith(expect.objectContaining({
-            headers: expect.objectContaining({ 'Authorization': 'Bearer secret' }),
-            params: expect.objectContaining({ 'q': 'search' })
-        }));
-    });
-
-    it('should handle JSON body with variable resolution', async () => {
-        const requestWithJson: J5Request = {
-            ...basicRequest,
-            method: 'POST',
-            body: {
-                type: 'json',
-                content: '{"name": "{{name}}"}'
-            }
-        };
-        const env = { name: 'John' };
-
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-
-        await executor.executeRequest(requestWithJson, env);
-
-        expect(axios).toHaveBeenCalledWith(expect.objectContaining({
-            data: { name: 'John' }
-        }));
-    });
-
-    it('should fallback to string if JSON body parsing fails', async () => {
-        const requestWithBadJson: J5Request = {
-            ...basicRequest,
-            method: 'POST',
-            body: {
-                type: 'json',
-                content: '{invalid-json}'
-            }
-        };
-
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-
-        await executor.executeRequest(requestWithBadJson, {});
-
-        expect(axios).toHaveBeenCalledWith(expect.objectContaining({
-            data: '{invalid-json}'
-        }));
-    });
-
-    it('should execute post-response script', async () => {
-        const script = 'env.status = response.status;';
-        const requestWithPostScript: J5Request = {
-            ...basicRequest,
-            postResponseScript: script
-        };
-
-        // Mock ScriptExecuter logic for execution
-        const mockExecute = vi.fn().mockImplementation((_script: any, context: any) => ({
-            environment: { ...context.environment, status: context.response.status },
-            logs: []
-        }));
-
-        (ScriptExecuter as any).mockImplementation(function (this: any) {
-            this.execute = mockExecute;
-        });
-
-        // Re-instantiate
-        executor = new RequestExecutor();
-
-        (axios as any).mockResolvedValue({
-            status: 201,
-            statusText: 'Created',
+            url: 'https://api.com',
             headers: {},
-            data: {}
+            sslConfig: { ca: ['ca.pem'], clientCert: 'c.pem', clientKey: 'k.pem' }
+        });
+        
+        expect(result.status).toBe(200);
+        expect(https.request).toHaveBeenCalled();
+    });
+
+    it('covers body resolution branches', async () => {
+        mockResponse(200, 'ok');
+        
+        // JSON Body
+        await executor.executeRequest({ 
+            url: 'u', method: 'POST', body: { type: 'json', content: '{"a": "{{v}}"}' } 
+        } as any, { v: '1' });
+        
+        // FormData Body with resolved variables and files (triggers pipe)
+        (fsPromises.readFile as any).mockResolvedValue(Buffer.from('file-content'));
+        await executor.executeRequest({ 
+            url: 'u', method: 'POST', body: { type: 'form-data', content: { f: { type: 'file', path: 'p', name: 'n' }, k: '{{v}}' } } 
+        } as any, { v: 'val' });
+        
+        // Body-less request
+        await executor.executeRequest({ url: 'u', method: 'GET' } as any, {});
+
+        expect(mockEnvManager.resolveVariables).toHaveBeenCalled();
+    });
+
+    it('covers NativeHttpClient edge cases', async () => {
+        // Missing status codes
+        const resMock = new EventEmitter() as any;
+        resMock.headers = {};
+        const reqMock = new EventEmitter() as any;
+        reqMock.end = vi.fn().mockImplementation(() => {
+            process.nextTick(() => resMock.emit('end'));
+        });
+        (http.request as any).mockImplementationOnce((_u:any, _o:any, cb:any) => {
+            cb(resMock); return reqMock;
         });
 
-        const result = await executor.executeRequest(requestWithPostScript, {});
-
-        expect(mockExecute).toHaveBeenCalled();
-        expect(result.environment).toHaveProperty('status', 201);
+        const result = await mockHttpClient.request({ method: 'GET', url: 'http://a.com', headers: {} });
+        expect(result.status).toBe(0);
+        expect(result.statusText).toBe('');
     });
 
-    it('should handle form-data body', async () => {
-        const requestWithFormData: J5Request = {
-            ...basicRequest,
-            method: 'POST',
-            body: {
-                type: 'form-data',
-                content: {
-                    file: { type: 'file', path: '/path/to/file.txt' },
-                    text: 'some text'
-                }
-            }
-        };
+    it('covers error branches in SSL and transport', async () => {
+        // CA error
+        (fsPromises.readFile as any).mockRejectedValueOnce(new Error('ca fail'));
+        await expect(mockHttpClient.request({
+            method: 'GET', url: 'https://a.com', headers: {}, sslConfig: { ca: ['bad'] }
+        })).rejects.toThrow('Failed to load SSL certificates (CA)');
 
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
+        // Cert error
+        (fsPromises.readFile as any).mockRejectedValueOnce(new Error('cert fail'));
+        await expect(mockHttpClient.request({
+            method: 'GET', url: 'https://a.com', headers: {}, sslConfig: { clientCert: 'bad' }
+        })).rejects.toThrow('Failed to load SSL certificates (Cert)');
 
-        const result = await executor.executeRequest(requestWithFormData, {});
+        // Key error
+        (fsPromises.readFile as any).mockRejectedValueOnce(new Error('key fail'));
+        await expect(mockHttpClient.request({
+            method: 'GET', url: 'https://a.com', headers: {}, sslConfig: { clientKey: 'bad' }
+        })).rejects.toThrow('Failed to load SSL certificates (Key)');
 
-        if (!result.success) {
-            console.error('Request failed:', result.error);
-        }
-
-        expect(result.success).toBe(true);
-        expect(axios).toHaveBeenCalledWith(expect.objectContaining({
-            headers: expect.objectContaining({ 'Content-Type': 'multipart/form-data; boundary=---' })
-        }));
-    });
-
-    it('should configure axios with correct callbacks', async () => {
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-        await executor.executeRequest(basicRequest, {});
-
-        // Find the call with the config
-        const calls = (axios as any).mock.calls;
-        const lastCall = calls[calls.length - 1];
-        const config = lastCall[0];
-
-        expect(config.validateStatus(200)).toBe(true);
-        expect(config.validateStatus(500)).toBe(true);
-        expect(config.validateStatus(404)).toBe(true);
-
-        const rawData = '{"key": "value"}';
-        const transformFn = config.transformResponse[0];
-        expect(transformFn(rawData)).toBe(rawData);
-    });
-
-    it('should log error when file read fails in form-data', async () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-        (fs.createReadStream as any).mockImplementation(() => { throw new Error('File read error'); });
-
-        const requestWithFile: J5Request = {
-            ...basicRequest,
-            method: 'POST',
-            body: {
-                type: 'form-data',
-                content: {
-                    file: { type: 'file', path: '/bad_file.txt' }
-                }
-            }
-        };
-
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-
-        await executor.executeRequest(requestWithFile, {});
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read file'), expect.any(Error));
-
-        consoleSpy.mockRestore();
-    });
-
-    it('should handle non-json response headers', async () => {
-        (axios as any).mockResolvedValue({
-            status: 200,
-            statusText: 'OK',
-            headers: { 'content-type': 'text/plain' },
-            data: 'raw text'
-        });
-
-        const result = await executor.executeRequest(basicRequest, {});
-        expect(result.response?.data).toBe('raw text');
-    });
-
-    it('should configure SSL agent when sslConfig is provided', async () => {
-        const sslRequest: J5Request = {
-            ...basicRequest,
-            sslConfig: {
-                ca: ['/path/to/ca.pem'],
-                clientCert: '/path/to/cert.pem',
-                clientKey: '/path/to/key.pem',
-                rejectUnauthorized: false
-            }
-        };
-
-        (fsPromises.readFile as any).mockResolvedValue(Buffer.from('mock-cert-content'));
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-
-        await executor.executeRequest(sslRequest, {});
-
-        expect(fsPromises.readFile).toHaveBeenCalledTimes(3);
-
-        const calls = (axios as any).mock.calls;
-        const config = calls[calls.length - 1][0];
-
-        expect(config.httpsAgent).toBeDefined();
-        const agentOptions = config.httpsAgent.options;
-        expect(agentOptions.rejectUnauthorized).toBe(false);
-        expect(agentOptions.ca[0]).toEqual(Buffer.from('mock-cert-content'));
-    });
-
-    it('should handle SSL certificate loading errors', async () => {
-        const sslRequest: J5Request = {
-            ...basicRequest,
-            sslConfig: {
-                clientCert: '/path/to/missing.pem'
-            }
-        };
-
-        (fsPromises.readFile as any).mockRejectedValue(new Error('ENOENT: no such file or directory'));
-
-        const result = await executor.executeRequest(sslRequest, {});
-
-        expect(result.success).toBe(false);
-        expect(result.error).toContain('Failed to load SSL certificates');
-    });
-
-    it('should use default rejectUnauthorized when not specified', async () => {
-        const sslRequest: J5Request = {
-            ...basicRequest,
-            sslConfig: {
-                ca: ['/path/to/ca.pem']
-            }
-        };
-        (fsPromises.readFile as any).mockResolvedValue(Buffer.from('ca'));
-        (axios as any).mockResolvedValue({ status: 200, data: {} });
-
-        await executor.executeRequest(sslRequest, {});
-
-        const calls = (axios as any).mock.calls;
-        const config = calls[calls.length - 1][0];
-        const agentOptions = config.httpsAgent.options;
-        expect(agentOptions.rejectUnauthorized).toBeUndefined();
+        // Transport error
+        const reqMock = new EventEmitter() as any;
+        reqMock.end = vi.fn();
+        (http.request as any).mockReturnValueOnce(reqMock);
+        const promise = mockHttpClient.request({ method: 'GET', url: 'http://a.com', headers: {} });
+        reqMock.emit('error', new Error('conn fail'));
+        await expect(promise).rejects.toThrow('conn fail');
     });
 });

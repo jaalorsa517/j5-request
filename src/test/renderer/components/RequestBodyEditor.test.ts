@@ -110,4 +110,31 @@ describe('RequestBodyEditor.vue', () => {
         const wrapper = mount(RequestBodyEditor, { global: { plugins: [pinia] } });
         expect(wrapper.find('.mock-formdata').exists()).toBe(true);
     });
+
+    it('triggers execution when MonacoEditor emits execute', async () => {
+        const pinia = createTestingPinia({ 
+            createSpy: vi.fn,
+            initialState: {
+                request: {
+                    tabs: [{
+                        id: '1',
+                        request: { bodyType: 'json', body: '{}' }
+                    }],
+                    activeTabId: '1'
+                }
+            }
+        });
+        const wrapper = mount(RequestBodyEditor, { 
+            global: { plugins: [pinia] } 
+        });
+
+        const MonacoEditor = (await import('@/renderer/components/MonacoEditor.vue')).default;
+        const editor = wrapper.findComponent(MonacoEditor);
+        
+        await editor.vm.$emit('execute');
+
+        const { useRequestStore } = await import('@/renderer/stores/request');
+        const store = useRequestStore();
+        expect(store.execute).toHaveBeenCalled();
+    });
 });

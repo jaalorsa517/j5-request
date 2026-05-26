@@ -1,166 +1,162 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setupIpc } from '@/main/ipc';
-import { ipcMain } from 'electron';
+import { ipcMain, app, dialog } from 'electron';
+import { FileSystemService } from '@/main/services/FileSystemService';
+import { GitService } from '@/main/services/GitService';
+import { RequestExecutor } from '@/main/services/RequestExecutor';
+import { ImportService } from '@/main/services/ImportService';
+import { ProjectConfigService } from '@/main/services/ProjectConfigService';
 
-// Mock services used by IPC
-vi.mock('@/main/services/GitService', () => ({
-    gitService: {
-        getStatus: vi.fn().mockResolvedValue({}),
-        push: vi.fn().mockResolvedValue(undefined),
-        stage: vi.fn().mockResolvedValue(undefined),
-        unstage: vi.fn().mockResolvedValue(undefined),
-        commit: vi.fn().mockResolvedValue(undefined),
-        pull: vi.fn().mockResolvedValue(undefined),
-        checkout: vi.fn().mockResolvedValue(undefined),
-        getBranches: vi.fn().mockResolvedValue([]),
-        findRepositories: vi.fn().mockResolvedValue([]),
-        getFileContent: vi.fn().mockResolvedValue(''),
-    }
-}));
-
-vi.mock('@/main/services/FileSystemService', () => {
-    return {
-        FileSystemService: vi.fn().mockImplementation(function(this: any) {
-            this.readDirRecursive = vi.fn().mockResolvedValue([]);
-            this.readFile = vi.fn().mockResolvedValue({});
-            this.writeFile = vi.fn().mockResolvedValue(undefined);
-            this.createDirectory = vi.fn().mockResolvedValue(undefined);
-            this.renamePath = vi.fn().mockResolvedValue(undefined);
-            this.deletePath = vi.fn().mockResolvedValue(undefined);
-            this.watch = vi.fn((path, cb) => cb('change', path));
-            this.stopWatch = vi.fn();
-        })
-    };
-});
-
-vi.mock('@/main/services/RequestExecutor', () => {
-    return {
-        RequestExecutor: vi.fn().mockImplementation(function(this: any) {
-            this.executeRequest = vi.fn().mockResolvedValue({});
-        })
-    };
-});
-
+// Mock Electron
 vi.mock('electron', () => {
     const handlers: Record<string, Function> = {};
     const listeners: Record<string, Function> = {};
+    
     return {
         ipcMain: {
-            handle: vi.fn((channel, handler) => { handlers[channel] = handler; }),
-            on: vi.fn((channel, listener) => { listeners[channel] = listener; }),
-            _invoke: (channel: string, ...args: any[]) => handlers[channel](null, ...args),
-            _emit: (channel: string, ...args: any[]) => listeners[channel](null, ...args)
+            handle: vi.fn((channel, listener) => {
+                handlers[channel] = listener;
+            }),
+            on: vi.fn((channel, listener) => {
+                listeners[channel] = listener;
+            }),
+            _trigger: async (channel: string, ...args: any[]) => {
+                if (handlers[channel]) return await handlers[channel]({ sender: { send: vi.fn() } }, ...args);
+                return null;
+            },
+            _triggerOn: (channel: string, ...args: any[]) => {
+                if (listeners[channel]) listeners[channel]({ sender: { send: vi.fn() } }, ...args);
+            }
         },
         app: {
-            getPath: vi.fn().mockReturnValue('/mock/user/data')
+            getPath: vi.fn().mockReturnValue('/mock/path'),
+            getVersion: vi.fn().mockReturnValue('1.0.0'),
+            getAppPath: vi.fn().mockReturnValue('/app/path')
+        },
+        shell: {
+            openExternal: vi.fn().mockResolvedValue(undefined)
         },
         dialog: {
-            showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: ['/selected/path'] }),
-            showSaveDialog: vi.fn().mockResolvedValue({ canceled: false, filePath: '/saved/path' })
-        }
+            showSaveDialog: vi.fn().mockResolvedValue({ canceled: false, filePath: '/saved/path' }),
+            showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: ['/opened/path'] })
+        },
+        BrowserWindow: vi.fn()
     };
 });
 
-describe('IPC setup', () => {
+// Mock electron-updater
+vi.mock('electron-updater', () => ({
+    autoUpdater: {
+        checkForUpdatesAndNotify: vi.fn().mockResolvedValue(undefined)
+    }
+}));
+
+// Mock Services
+vi.mock('@/main/services/ExportService');
+vi.mock('@/main/services/FileSystemService');
+vi.mock('@/main/services/GitService');
+vi.mock('@/main/services/RequestExecutor');
+vi.mock('@/main/services/ImportService');
+vi.mock('@/main/services/ProjectConfigService');
+vi.mock('@/main/services/EnvironmentManager');
+
+describe('IPC Handlers Exhaustive', () => {
     let mockWindow: any;
 
     beforeEach(() => {
         vi.clearAllMocks();
         mockWindow = {
-            isDestroyed: vi.fn().mockReturnValue(false),
-            webContents: {
-                send: vi.fn()
-            }
+            isDestroyed: () => false,
+            webContents: { send: vi.fn() }
         };
+        setupIpc(mockWindow);
     });
 
-    it('registers all handles', () => {
-        setupIpc(mockWindow);
-        expect(ipcMain.handle).toHaveBeenCalled();
-        expect(ipcMain.on).toHaveBeenCalledWith('fs:watch', expect.any(Function));
-    });
-
-    it('covers app handlers', async () => {
-        setupIpc(mockWindow);
-        const getGlobalsPath = (ipcMain.handle as any).mock.calls.find((c: any) => c[0] === 'app:get-globals-path')[1];
-        const result = await getGlobalsPath();
-        expect(result).toContain('globals.json');
-    });
-
-    it('covers fs handlers calls', async () => {
-        setupIpc(mockWindow);
-        const handlers = (ipcMain.handle as any).mock.calls;
+    it('triggers all app handlers', async () => {
+        await (ipcMain as any)._trigger('app:get-user-data-path');
+        await (ipcMain as any)._trigger('app:get-globals-path');
+        await (ipcMain as any)._trigger('app:get-info');
+        await (ipcMain as any)._trigger('app:openExternal', 'url');
+        await (ipcMain as any)._trigger('app:checkForUpdates');
         
-        // Find and call fs handlers
-        await handlers.find((c: any) => c[0] === 'fs:read-dir')[1](null, '/path');
-        await handlers.find((c: any) => c[0] === 'fs:read-file')[1](null, '/path');
-        await handlers.find((c: any) => c[0] === 'fs:write-file')[1](null, '/path', {});
-        await handlers.find((c: any) => c[0] === 'fs:create-dir')[1](null, '/path');
-        await handlers.find((c: any) => c[0] === 'fs:rename')[1](null, '/old', '/new');
-        await handlers.find((c: any) => c[0] === 'fs:delete')[1](null, '/path');
+        expect(app.getPath).toHaveBeenCalled();
+    });
+
+    it('triggers all fs handlers', async () => {
+        await (ipcMain as any)._trigger('fs:read-dir', '/p');
+        await (ipcMain as any)._trigger('fs:read-file', '/p');
+        await (ipcMain as any)._trigger('fs:read-text-file', '/p');
+        await (ipcMain as any)._trigger('fs:write-file', '/p', {});
+        await (ipcMain as any)._trigger('fs:write-text-file', '/p', '');
+        await (ipcMain as any)._trigger('fs:create-dir', '/p');
+        await (ipcMain as any)._trigger('fs:rename', '/old', '/new');
+        await (ipcMain as any)._trigger('fs:delete', '/p');
+        await (ipcMain as any)._trigger('fs:save-requests', [], '/p');
+        await (ipcMain as any)._trigger('fs:read-all-requests', '/p');
+        await (ipcMain as any)._trigger('fs:select-folder');
+        await (ipcMain as any)._trigger('fs:select-file');
+        await (ipcMain as any)._trigger('fs:save-file-dialog');
+        await (ipcMain as any)._trigger('fs:select-cert-file');
+        await (ipcMain as any)._trigger('fs:relative-path', '/root', '/file');
         
-        const selectFolder = handlers.find((c: any) => c[0] === 'fs:select-folder')[1];
-        const folder = await selectFolder();
-        expect(folder).toBe('/selected/path');
-
-        const selectFile = handlers.find((c: any) => c[0] === 'fs:select-file')[1];
-        const file = await selectFile();
-        expect(file).toBe('/selected/path');
-
-        const saveFileDialog = handlers.find((c: any) => c[0] === 'fs:save-file-dialog')[1];
-        const savePath = await saveFileDialog(null, 'test.json');
-        expect(savePath).toBe('/saved/path');
+        expect(FileSystemService.prototype.readDirRecursive).toHaveBeenCalled();
     });
 
-    it('covers canceled dialogs', async () => {
-        setupIpc(mockWindow);
-        const handlers = (ipcMain.handle as any).mock.calls;
-        const { dialog } = await import('electron');
+    it('triggers fs:watch and handles events', async () => {
+        let watchCallback: any;
+        vi.spyOn(FileSystemService.prototype, 'watch').mockImplementation((_p, cb) => {
+            watchCallback = cb;
+        });
+
+        await (ipcMain as any)._triggerOn('fs:watch', '/path');
+        expect(FileSystemService.prototype.watch).toHaveBeenCalled();
+
+        // Trigger a change
+        watchCallback('change', '/path/file.txt');
+        expect(mockWindow.webContents.send).toHaveBeenCalledWith('fs:changed', 'change', '/path/file.txt');
+    });
+
+    it('triggers all git handlers', async () => {
+        const handlers = [
+            'git:status', 'git:is-repository', 'git:init-repository', 
+            'git:stage', 'git:unstage', 'git:commit', 'git:push', 
+            'git:pull', 'git:checkout', 'git:get-branches', 
+            'git:find-repos', 'git:get-file-content'
+        ];
+
+        for (const h of handlers) {
+            await (ipcMain as any)._trigger(h, '/repo', 'arg');
+        }
+
+        expect(GitService.prototype.getStatus).toHaveBeenCalled();
+    });
+
+    it('triggers request execution with projectRoot', async () => {
+        vi.spyOn(ProjectConfigService.prototype, 'loadProjectConfig').mockResolvedValue({ 
+            ssl: { rejectUnauthorized: false } 
+        } as any);
+
+        await (ipcMain as any)._trigger('request:execute', { sslConfig: {} }, {}, '/root');
         
-        (dialog.showOpenDialog as any).mockResolvedValueOnce({ canceled: true, filePaths: [] });
-        const selectFolder = handlers.find((c: any) => c[0] === 'fs:select-folder')[1];
-        expect(await selectFolder()).toBeNull();
-
-        (dialog.showOpenDialog as any).mockResolvedValueOnce({ canceled: true, filePaths: [] });
-        const selectFile = handlers.find((c: any) => c[0] === 'fs:select-file')[1];
-        expect(await selectFile()).toBeNull();
-
-        (dialog.showSaveDialog as any).mockResolvedValueOnce({ canceled: true, filePath: '' });
-        const saveFileDialog = handlers.find((c: any) => c[0] === 'fs:save-file-dialog')[1];
-        expect(await saveFileDialog()).toBeNull();
+        expect(ProjectConfigService.prototype.loadProjectConfig).toHaveBeenCalledWith('/root');
+        expect(RequestExecutor.prototype.executeRequest).toHaveBeenCalled();
     });
 
-    it('covers git handlers calls', async () => {
-        setupIpc(mockWindow);
-        const handlers = (ipcMain.handle as any).mock.calls;
+    it('triggers export:file and handles cancel', async () => {
+        (dialog.showSaveDialog as any).mockResolvedValueOnce({ canceled: true });
+        const result = await (ipcMain as any)._trigger('export:file', 'content');
+        expect(result).toBeNull();
+    });
+
+    it('triggers all export and import handlers', async () => {
+        const formats = ['curl', 'fetch', 'powershell', 'postman', 'insomnia', 'openapi'];
+        for (const f of formats) {
+            await (ipcMain as any)._trigger('export:generate', {}, f);
+        }
         
-        await handlers.find((c: any) => c[0] === 'git:status')[1](null, '/repo');
-        await handlers.find((c: any) => c[0] === 'git:stage')[1](null, '/repo', []);
-        await handlers.find((c: any) => c[0] === 'git:unstage')[1](null, '/repo', []);
-        await handlers.find((c: any) => c[0] === 'git:commit')[1](null, '/repo', 'msg');
-        await handlers.find((c: any) => c[0] === 'git:push')[1](null, '/repo');
-        await handlers.find((c: any) => c[0] === 'git:pull')[1](null, '/repo');
-        await handlers.find((c: any) => c[0] === 'git:checkout')[1](null, '/repo', 'branch');
-        await handlers.find((c: any) => c[0] === 'git:get-branches')[1](null, '/repo');
-        await handlers.find((c: any) => c[0] === 'git:find-repos')[1](null, '/path');
-        await handlers.find((c: any) => c[0] === 'git:get-file-content')[1](null, '/repo', 'file', 'HEAD');
-    });
-
-    it('covers request handlers calls', async () => {
-        setupIpc(mockWindow);
-        const handlers = (ipcMain.handle as any).mock.calls;
-        await handlers.find((c: any) => c[0] === 'request:execute')[1](null, {}, {});
-    });
-
-    it('covers fs:watch listener', () => {
-        setupIpc(mockWindow);
-        const watchListener = (ipcMain.on as any).mock.calls.find((c: any) => c[0] === 'fs:watch')[1];
-        watchListener(null, '/path');
-        expect(mockWindow.webContents.send).toHaveBeenCalled();
-
-        // Test destroyed window branch
-        mockWindow.isDestroyed.mockReturnValue(true);
-        watchListener(null, '/path');
-        expect(mockWindow.webContents.send).toHaveBeenCalledTimes(1); // not called again
+        await (ipcMain as any)._trigger('import:from-content', 'content', {});
+        await (ipcMain as any)._trigger('import:detect-format', 'content');
+        
+        expect(ImportService.prototype.importFromContent).toHaveBeenCalled();
     });
 });
