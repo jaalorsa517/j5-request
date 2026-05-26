@@ -38,11 +38,55 @@ export function setupIpc(mainWindow: BrowserWindow) {
         return result.filePath;
     });
 
-    ipcMain.handle('export:generate', async (_, request: any, format: string) => {
+    ipcMain.handle('export:generate', async (_, request: any, format: string, environment?: any) => {
         // Handle single request vs array - for now assuming single request passed from UI
         // If request is not array, wrap it for collection formats
         const requests = Array.isArray(request) ? request : [request];
-        const singleRequest = Array.isArray(request) ? request[0] : request;
+        const env = environment || {};
+
+        const resolvedRequests = requests.map(req => {
+            const clonedReq = JSON.parse(JSON.stringify(req));
+            if (clonedReq.url) {
+                clonedReq.url = environmentManager.resolveVariables(clonedReq.url, env);
+            }
+            if (clonedReq.headers) {
+                const resolvedHeaders: Record<string, string> = {};
+                for (const [key, value] of Object.entries(clonedReq.headers)) {
+                    const resolvedKey = environmentManager.resolveVariables(key, env);
+                    resolvedHeaders[resolvedKey] = environmentManager.resolveVariables(String(value), env);
+                }
+                clonedReq.headers = resolvedHeaders;
+            }
+            if (clonedReq.params) {
+                const resolvedParams: Record<string, string> = {};
+                for (const [key, value] of Object.entries(clonedReq.params)) {
+                    const resolvedKey = environmentManager.resolveVariables(key, env);
+                    resolvedParams[resolvedKey] = environmentManager.resolveVariables(String(value), env);
+                }
+                clonedReq.params = resolvedParams;
+            }
+            if (clonedReq.body) {
+                if (clonedReq.body.type === 'json' && typeof clonedReq.body.content === 'string') {
+                    clonedReq.body.content = environmentManager.resolveVariables(clonedReq.body.content, env);
+                } else if (clonedReq.body.type === 'form-data' && typeof clonedReq.body.content === 'object') {
+                    const resolvedFormData: Record<string, any> = {};
+                    for (const [key, value] of Object.entries(clonedReq.body.content)) {
+                        const resolvedKey = environmentManager.resolveVariables(key, env);
+                        if (typeof value === 'object' && value !== null && 'type' in value && (value as any).type === 'file') {
+                            resolvedFormData[resolvedKey] = value;
+                        } else {
+                            resolvedFormData[resolvedKey] = environmentManager.resolveVariables(String(value), env);
+                        }
+                    }
+                    clonedReq.body.content = resolvedFormData;
+                } else if (clonedReq.body.content && typeof clonedReq.body.content === 'string') {
+                    clonedReq.body.content = environmentManager.resolveVariables(clonedReq.body.content, env);
+                }
+            }
+            return clonedReq;
+        });
+
+        const singleRequest = resolvedRequests[0];
 
         switch (format) {
             // Text formats (Single Request)
@@ -51,10 +95,10 @@ export function setupIpc(mainWindow: BrowserWindow) {
             case 'powershell': return exportService.generatePowerShell(singleRequest);
 
             // Collection formats (Array)
-            case 'postman': return JSON.stringify(exportService.generatePostmanCollection(requests), null, 2);
-            case 'insomnia': return JSON.stringify(exportService.generateInsomniaCollection(requests), null, 2);
+            case 'postman': return JSON.stringify(exportService.generatePostmanCollection(resolvedRequests), null, 2);
+            case 'insomnia': return JSON.stringify(exportService.generateInsomniaCollection(resolvedRequests), null, 2);
             case 'openapi':
-                return JSON.stringify(exportService.generateOpenAPI(requests, {
+                return JSON.stringify(exportService.generateOpenAPI(resolvedRequests, {
                     title: 'J5 Request Export',
                     version: '1.0.0',
                     description: 'Exported from J5 Request'

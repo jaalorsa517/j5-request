@@ -58,7 +58,7 @@ declare global {
             export: {
                 toClipboard: (content: string) => Promise<void>;
                 toFile: (content: string, defaultName?: string) => Promise<string | null>;
-                generate: (request: Partial<J5Request> | J5Request[], format: string) => Promise<string>;
+                generate: (request: Partial<J5Request> | J5Request[], format: string, environment?: any) => Promise<string>;
             };
             environment: {
                 load: (filePath: string, projectPath?: string) => Promise<import('@/shared/types').J5Environment>;

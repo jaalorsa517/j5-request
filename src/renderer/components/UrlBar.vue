@@ -2,8 +2,9 @@
 import { ref } from 'vue';
 import { useRequestStore } from '@/renderer/stores/request';
 import { RequestMethod, J5Request } from '@/shared/types';
+import { useEnvironmentStore } from '@/renderer/stores/environment';
+import { getActivePinia } from 'pinia';
 import ContextMenu, { MenuItem } from '@/renderer/components/ContextMenu.vue';
-import ExportDialog from '@/renderer/components/ExportDialog.vue';
 
 const requestStore = useRequestStore();
 
@@ -61,7 +62,9 @@ async function handleExportAction(item: MenuItem) {
         }
 
         const rawRequest = JSON.parse(JSON.stringify(request));
-        const content = await window.electron.export.generate(rawRequest, item.action);
+        const env = getActivePinia() ? useEnvironmentStore().currentVariables : {};
+        const rawEnv = JSON.parse(JSON.stringify(env));
+        const content = await window.electron.export.generate(rawRequest, item.action, rawEnv);
         await window.electron.export.toClipboard(content);
         
         // Notification
@@ -220,6 +223,10 @@ function getRequestBody(): any {
 .urlBar__btn {
     height: 40px;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
 
 .urlBar__btn--primary {
@@ -241,7 +248,6 @@ function getRequestBody(): any {
 
 .urlBar__btn-icon {
     font-size: 10px;
-    margin-left: 4px;
 }
 </style>
 

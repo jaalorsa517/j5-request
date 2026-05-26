@@ -8,6 +8,33 @@ export const useFileSystemStore = defineStore('file-system', () => {
     const selectedFile = ref<J5Request | null>(null);
     const selectedFilePath = ref<string | null>(null);
 
+    const editingPath = ref<string | null>(null);
+    const editingName = ref<string>('');
+
+    function startRename(path: string, currentName: string) {
+        editingPath.value = path;
+        editingName.value = path.endsWith('.j5request') ? currentName.replace('.j5request', '') : currentName;
+    }
+
+    function cancelRename() {
+        editingPath.value = null;
+        editingName.value = '';
+    }
+
+    async function finishRename() {
+        const path = editingPath.value;
+        const name = editingName.value.trim();
+        cancelRename();
+        if (!path || !name) {
+            return;
+        }
+        try {
+            await renameItem(path, name);
+        } catch (e: any) {
+            alert('Error al renombrar: ' + e.message);
+        }
+    }
+
     // Listener cleanup
     let stopWatcher: (() => void) | null = null;
 
@@ -43,6 +70,11 @@ export const useFileSystemStore = defineStore('file-system', () => {
         });
     }
 
+    async function selectDirectory(path: string) {
+        selectedFilePath.value = path;
+        selectedFile.value = null;
+    }
+
     async function selectFile(path: string) {
         try {
             const content = await window.electron.fs.readFile(path);
@@ -70,16 +102,20 @@ export const useFileSystemStore = defineStore('file-system', () => {
     async function createRequest(filename: string) {
         if (!currentPath.value) return;
 
+        let parentDir = currentPath.value;
+        if (selectedFilePath.value) {
+            if (selectedFilePath.value.endsWith('.j5request')) {
+                const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
+                parentDir = selectedFilePath.value.substring(0, selectedFilePath.value.lastIndexOf(separator));
+            } else {
+                parentDir = selectedFilePath.value;
+            }
+        }
+
         // Ensure .j5request extension
         const finalName = filename.endsWith('.j5request') ? filename : `${filename}.j5request`;
-        // Basic path join (assuming unix-style for now, but electron handles absolute paths)
-        // Ideally we should use path.join in main process, but string concat works if currentPath has separation
-        // Let's assume currentPath is absolute.
-        // We'll trust the main process write-file to handle absolute path.
-        // We need the separator. Electron runs on Node, but this is renderer.
-        // Let's use a simple slash, assuming Linux/macOS or that Electron normalization handles it.
         const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
-        const newPath = `${currentPath.value}${separator}${finalName}`;
+        const newPath = `${parentDir}${separator}${finalName}`;
 
         const newRequest: J5Request = {
             id: crypto.randomUUID(),
@@ -101,8 +137,17 @@ export const useFileSystemStore = defineStore('file-system', () => {
 
     async function createFolder(name: string) {
         if (!currentPath.value) return;
+        let parentDir = currentPath.value;
+        if (selectedFilePath.value) {
+            if (selectedFilePath.value.endsWith('.j5request')) {
+                const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
+                parentDir = selectedFilePath.value.substring(0, selectedFilePath.value.lastIndexOf(separator));
+            } else {
+                parentDir = selectedFilePath.value;
+            }
+        }
         const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
-        const newPath = `${currentPath.value}${separator}${name}`;
+        const newPath = `${parentDir}${separator}${name}`;
         try {
             await window.electron.fs.createDirectory(newPath);
         } catch (e) {
@@ -114,9 +159,58 @@ export const useFileSystemStore = defineStore('file-system', () => {
     async function renameItem(oldPath: string, newName: string) {
         const separator = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')) ? '\\' : '/';
         const directory = oldPath.substring(0, oldPath.lastIndexOf(separator));
-        const newPath = `${directory}${separator}${newName}`;
+        
+        let finalName = newName;
+        if (oldPath.endsWith('.j5request') && !newName.endsWith('.j5request')) {
+            finalName = `${newName}.j5request`;
+        }
+        
+        const newPath = `${directory}${separator}${finalName}`;
         try {
             await window.electron.fs.rename(oldPath, newPath);
+
+            const isDir = !oldPath.endsWith('.j5request');
+
+            // Actualizar la propiedad name dentro del archivo JSON
+            if (!isDir) {
+                try {
+                    const content = await window.electron.fs.readFile(newPath);
+                    if (content && typeof content === 'object') {
+                        content.name = finalName.replace('.j5request', '');
+                        await window.electron.fs.writeFile(newPath, content);
+                    }
+                } catch (err) {
+                    console.error('Failed to update internal request name', err);
+                }
+            }
+
+            // Actualizar referencias en el request store
+            const { useRequestStore } = await import('@/renderer/stores/request');
+            const requestStore = useRequestStore();
+
+            requestStore.tabs.forEach(t => {
+                if (t.filePath) {
+                    if (t.filePath === oldPath) {
+                        t.filePath = newPath;
+                        t.name = finalName.replace('.j5request', '');
+                        t.request.name = finalName.replace('.j5request', '');
+                    } else if (isDir && t.filePath.startsWith(oldPath + separator)) {
+                        t.filePath = newPath + t.filePath.substring(oldPath.length);
+                    }
+                }
+            });
+
+            // Actualizar selección activa
+            if (selectedFilePath.value) {
+                if (selectedFilePath.value === oldPath) {
+                    selectedFilePath.value = newPath;
+                    if (selectedFile.value) {
+                        selectedFile.value.name = finalName.replace('.j5request', '');
+                    }
+                } else if (isDir && selectedFilePath.value.startsWith(oldPath + separator)) {
+                    selectedFilePath.value = newPath + selectedFilePath.value.substring(oldPath.length);
+                }
+            }
         } catch (e) {
             console.error('Failed to rename item', e);
             throw e;
@@ -149,8 +243,14 @@ export const useFileSystemStore = defineStore('file-system', () => {
         currentPath,
         selectedFile,
         selectedFilePath,
+        editingPath,
+        editingName,
+        startRename,
+        cancelRename,
+        finishRename,
         openDirectory,
         selectFile,
+        selectDirectory,
         saveRequest,
         createRequest,
         createFolder,

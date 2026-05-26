@@ -6,6 +6,8 @@ import https from 'https';
 import { URL } from 'url';
 import FormData from 'form-data';
 import fsPromises from 'fs/promises';
+import fs from 'fs';
+import { Readable } from 'stream';
 import { resolveRelativePath } from '@/main/utils/pathUtils';
 
 export class NativeHttpClient {
@@ -105,6 +107,8 @@ export class NativeHttpClient {
             if (bodyData) {
                 if (bodyData instanceof FormData) {
                     bodyData.pipe(req);
+                } else if (typeof bodyData === 'string' || Buffer.isBuffer(bodyData)) {
+                    Readable.from(bodyData).pipe(req);
                 } else {
                     req.write(bodyData);
                     req.end();
@@ -156,12 +160,14 @@ export class RequestExecutor {
 
             const resolvedHeaders: Record<string, string> = {};
             for (const [key, value] of Object.entries(reqHeaders)) {
-                resolvedHeaders[key] = this.envManager.resolveVariables(value, currentEnv);
+                const resolvedKey = this.envManager.resolveVariables(key, currentEnv);
+                resolvedHeaders[resolvedKey] = this.envManager.resolveVariables(String(value), currentEnv);
             }
 
             const resolvedParams: Record<string, string> = {};
             for (const [key, value] of Object.entries(reqParams)) {
-                resolvedParams[key] = this.envManager.resolveVariables(value, currentEnv);
+                const resolvedKey = this.envManager.resolveVariables(key, currentEnv);
+                resolvedParams[resolvedKey] = this.envManager.resolveVariables(String(value), currentEnv);
             }
 
             if (Object.keys(resolvedParams).length > 0) {
@@ -184,15 +190,16 @@ export class RequestExecutor {
                 } else if (request.body.type === 'form-data' && typeof request.body.content === 'object') {
                     const formData = new FormData();
                     for (const [key, value] of Object.entries(request.body.content)) {
+                        const resolvedKey = this.envManager.resolveVariables(key, currentEnv);
                         if (typeof value === 'object' && value !== null && 'type' in value && (value as any).type === 'file') {
                             try {
-                                const fileContent = await fsPromises.readFile((value as any).path);
-                                formData.append(key, fileContent, { filename: (value as any).name || 'file' });
+                                const fileStream = fs.createReadStream((value as any).path);
+                                formData.append(resolvedKey, fileStream, { filename: (value as any).name || 'file' });
                             } catch (e) {
                                 console.error('Error attaching file:', e);
                             }
                         } else {
-                            formData.append(key, this.envManager.resolveVariables(String(value), currentEnv));
+                            formData.append(resolvedKey, this.envManager.resolveVariables(String(value), currentEnv));
                         }
                     }
                     resolvedData = formData;

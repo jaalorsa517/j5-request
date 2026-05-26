@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { J5Request } from '@/shared/types';
+import { useEnvironmentStore } from '@/renderer/stores/environment';
+import { getActivePinia } from 'pinia';
 
 const props = defineProps<{
     isOpen: boolean;
@@ -79,15 +81,17 @@ async function handleSave() {
 }
 
 async function generateContent(): Promise<string> {
+    const env = getActivePinia() ? useEnvironmentStore().currentVariables : {};
+    const rawEnv = JSON.parse(JSON.stringify(env));
     if (isCollection.value && props.requests) {
         // Collection export - deeply strip proxies to avoid cloning errors
         const rawRequests = JSON.parse(JSON.stringify(props.requests));
-        const result = await window.electron.export.generate(rawRequests, selectedFormat.value);
+        const result = await window.electron.export.generate(rawRequests, selectedFormat.value, rawEnv);
         return result;
     } else if (props.request) {
         // Single request export - deeply strip proxies to avoid cloning errors
         const rawRequest = JSON.parse(JSON.stringify(props.request));
-        const result = await window.electron.export.generate(rawRequest, selectedFormat.value);
+        const result = await window.electron.export.generate(rawRequest, selectedFormat.value, rawEnv);
         return result;
     }
     throw new Error('No request or collection to export');

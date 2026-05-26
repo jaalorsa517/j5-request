@@ -80,7 +80,7 @@ contextBridge.exposeInMainWorld('electron', {
   export: {
     toClipboard: (content: string) => ipcRenderer.invoke('export:clipboard', content),
     toFile: (content: string, defaultName?: string) => ipcRenderer.invoke('export:file', content, defaultName),
-    generate: (request: any, format: string) => ipcRenderer.invoke('export:generate', request, format)
+    generate: (request: any, format: string, environment?: any) => ipcRenderer.invoke('export:generate', request, format, environment)
   },
   ssl: {
     selectCertificateFile: () => ipcRenderer.invoke('fs:select-cert-file')

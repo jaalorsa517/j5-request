@@ -1,7 +1,7 @@
 {
   "name": "@jaalorsa/j5-request",
   "private": false,
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "Cliente HTTP API as Code minimalista y colaborativo.",
   "author": "jaalorsa517",
   "license": "MIT",

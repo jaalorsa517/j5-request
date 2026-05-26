@@ -25,6 +25,8 @@ const envStore = useEnvironmentStore();
 const themeStore = useThemeStore();
 const showNewRequestModal = ref(false);
 const newRequestName = ref('');
+const showNewFolderModal = ref(false);
+const newFolderName = ref('');
 const showImportModal = ref(false);
 const showAboutModal = ref(false);
 
@@ -148,6 +150,7 @@ function handleNodeContextMenu(event: MouseEvent, entry: J5FileEntry) {
     
     // Update context menu items based on entry type
     contextMenuItems.value = [
+        { label: 'Renombrar', action: 'rename' },
         { label: 'Exportar...', action: 'export' },
         { label: 'Eliminar', action: 'delete', danger: true }
     ];
@@ -155,11 +158,43 @@ function handleNodeContextMenu(event: MouseEvent, entry: J5FileEntry) {
     showContextMenu.value = true;
 }
 
+async function renameNode(entry: J5FileEntry) {
+    store.startRename(entry.path, entry.name);
+}
+
+function handleNodeDblClick(entry: J5FileEntry) {
+    renameNode(entry);
+}
+
+function openCreateFolderModal() {
+    newFolderName.value = '';
+    showNewFolderModal.value = true;
+}
+
+async function confirmCreateFolder() {
+    if (newFolderName.value) {
+        try {
+            await store.createFolder(newFolderName.value);
+            showNewFolderModal.value = false;
+        } catch (e: any) {
+            alert('Error al crear carpeta: ' + e.message);
+        }
+    }
+}
+
+function openManual() {
+    if (window.electron?.app?.openExternal) {
+        window.electron.app.openExternal('https://github.com/jaalorsa517/j5-request#readme');
+    }
+}
+
 async function handleContextMenuAction(item: MenuItem) {
     showContextMenu.value = false;
     if (item.action === 'delete' && contextMenuTarget.value) {
         itemToDelete.value = contextMenuTarget.value;
         showDeleteConfirm.value = true;
+    } else if (item.action === 'rename' && contextMenuTarget.value) {
+        renameNode(contextMenuTarget.value);
     } else if (item.action === 'export' && contextMenuTarget.value) {
         const target = contextMenuTarget.value;
         if (target.type === 'directory') {
@@ -207,6 +242,7 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 
     if (e.key === 'Escape') {
         if (showNewRequestModal.value) showNewRequestModal.value = false;
+        if (showNewFolderModal.value) showNewFolderModal.value = false;
         if (showImportModal.value) showImportModal.value = false;
         if (showExportDialog.value) showExportDialog.value = false;
         if (envStore.showManager) envStore.showManager = false;
@@ -272,6 +308,13 @@ onUnmounted(() => {
             <div class="activityBar__bottom">
                 <button
                     class="activityBar__item"
+                    @click="openManual"
+                    title="Manual de Instrucciones"
+                >
+                    <span class="activityBar__icon">📖</span>
+                </button>
+                <button
+                    class="activityBar__item"
                     @click="showAboutModal = true"
                     title="Acerca de"
                 >
@@ -303,7 +346,15 @@ onUnmounted(() => {
                         @click="openCreateModal"
                         title="Nueva Petición"
                     >
-                        ➕ Nueva
+                        ➕ Petición
+                    </button>
+                    <button
+                        class="sidebar__btn"
+                        :disabled="!store.currentPath"
+                        @click="openCreateFolderModal"
+                        title="Nueva Carpeta"
+                    >
+                        📁 Carpeta
                     </button>
                     <button
                         class="sidebar__btn sidebar__btn--primary"
@@ -325,7 +376,7 @@ onUnmounted(() => {
             </div>
             
             <div class="sidebar__content">
-                <FileTree v-if="activeActivity === 'explorer'" :entries="store.rootEntry" @node-contextmenu="handleNodeContextMenu" />
+                <FileTree v-if="activeActivity === 'explorer'" :entries="store.rootEntry" @node-contextmenu="handleNodeContextMenu" @node-dblclick="handleNodeDblClick" />
                 <GitPanel v-else-if="activeActivity === 'git'" @openDiff="handleOpenDiff" />
             </div>
         </aside>
@@ -369,6 +420,24 @@ onUnmounted(() => {
                 <div class="mainLayout__modalActions">
                     <button @click="showNewRequestModal = false">Cancelar</button>
                     <button class="primary" @click="confirmCreateRequest">Crear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Carpeta -->
+        <div v-if="showNewFolderModal" class="mainLayout__modalOverlay">
+            <div class="mainLayout__modal">
+                <h3 class="mainLayout__modalTitle">Nueva Carpeta</h3>
+                <input
+                    v-model="newFolderName"
+                    class="mainLayout__modalInput"
+                    placeholder="Nombre de la carpeta"
+                    autofocus
+                    @keyup.enter="confirmCreateFolder"
+                />
+                <div class="mainLayout__modalActions">
+                    <button @click="showNewFolderModal = false">Cancelar</button>
+                    <button class="primary" @click="confirmCreateFolder">Crear</button>
                 </div>
             </div>
         </div>
