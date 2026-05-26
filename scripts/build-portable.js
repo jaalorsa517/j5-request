@@ -1,7 +1,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 const { minify } = require('terser');
-const { createPackageWithOptions } = require('asar');
+const { createPackageWithOptions } = require('@electron/asar');
 
 async function buildPortable() {
   const rootDir = path.resolve(__dirname, '..');
