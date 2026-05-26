@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const _dirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : path.dirname(fileURLToPath(import.meta.url || 'file:///'))
 
 // The built directory structure
 //
@@ -17,7 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // │ │ ├── main.js
 // │ │ └── preload.mjs
 // │
-process.env.APP_ROOT = path.join(__dirname, '..')
+process.env.APP_ROOT = path.join(_dirname, '..')
 
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -36,7 +38,7 @@ function createWorker() {
   // Note: Extension might be .mjs or .js depending on build. Trying .js first as it's common.
   // However, since preload is .mjs in the template, maybe worker is too?
   // Let's try to detect or fallback.
-  const workerPath = path.join(__dirname, 'worker.js')
+  const workerPath = path.join(_dirname, 'worker.js')
 
   console.log('Spawning worker from:', workerPath)
 
@@ -68,7 +70,7 @@ function createWindow() {
     icon: iconPath,
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(_dirname, 'preload.js'),
       devTools: false
     },
   })

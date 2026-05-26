@@ -49,7 +49,18 @@ const openDonation = () => {
 
 const checkUpdates = () => {
     if ((window as any).electron?.app?.checkForUpdates) {
-        (window as any).electron.app.checkForUpdates();
+        updateStatus.value = 'checking';
+        (window as any).electron.app.checkForUpdates().then(() => {
+            // En desarrollo o si no hay eventos, evitar quedarse en 'checking'
+            setTimeout(() => {
+                if (updateStatus.value === 'checking') {
+                    updateStatus.value = 'uptodate';
+                }
+            }, 1500);
+        }).catch((err: any) => {
+            updateStatus.value = 'error';
+            errorMessage.value = err.message || 'Error al buscar actualizaciones';
+        });
     }
 };
 
