@@ -11,7 +11,6 @@ permissions:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -44,14 +43,13 @@ jobs:
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
-          # sips is native to macOS
           sips -z 512 512 public/icon.png --out build/icon.png
 
       - name: Run Tests
         run: pnpm test
 
-      - name: Build and Publish
-        run: pnpm run build --publish always
+      - name: Build Electron App
+        run: pnpm run build --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -61,11 +59,36 @@ jobs:
           pnpm run build:portable
           cd release && zip -r j5-request-portable.zip portable
 
-      - name: Upload Portable to Release
-        if: matrix.os == 'ubuntu-latest'
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.yml
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-releases
+          merge-multiple: true
+
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/j5-request-portable.zip
-          draft: true
+          files: all-releases/*
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
