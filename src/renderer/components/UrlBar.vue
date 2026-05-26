@@ -15,6 +15,7 @@ const showExportMenu = ref(false);
 const exportMenuX = ref(0);
 const exportMenuY = ref(0);
 const exportButtonRef = ref<HTMLElement | null>(null);
+const exportButtonText = ref('Exportar');
 
 // Export Dialog State
 const showExportDialog = ref(false);
@@ -68,14 +69,10 @@ async function handleExportAction(item: MenuItem) {
         await window.electron.export.toClipboard(content);
         
         // Notification
-        const btn = exportButtonRef.value;
-        if(btn) {
-            const originalText = btn.innerText;
-            btn.innerText = '¡Copiado!';
-            setTimeout(() => {
-                btn.innerText = originalText;
-            }, 2000);
-        }
+        exportButtonText.value = '¡Copiado!';
+        setTimeout(() => {
+            exportButtonText.value = 'Exportar';
+        }, 2000);
 
     } catch (e) {
         console.error('Export failed', e);
@@ -135,7 +132,7 @@ function getRequestBody(): any {
                 @click="toggleExportMenu"
                 title="Exportar petición"
             >
-                <span>Exportar</span>
+                <span>{{ exportButtonText }}</span>
                 <span class="urlBar__btn-icon">▾</span>
             </button>
         </div>

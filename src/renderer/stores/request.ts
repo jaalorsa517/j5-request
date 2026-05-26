@@ -390,8 +390,9 @@ export const useRequestStore = defineStore('request', () => {
 
             // Deep clone to remove Proxy wrappers before sending to Electron
             const plainRequest = JSON.parse(JSON.stringify(reqData));
+            const plainEnv = JSON.parse(JSON.stringify(currentEnv));
 
-            const result = await window.electron.request.execute(plainRequest, currentEnv, projectRoot);
+            const result = await window.electron.request.execute(plainRequest, plainEnv, projectRoot);
 
             if (result.success && result.response) {
                 if (result.environment) {

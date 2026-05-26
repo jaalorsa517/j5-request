@@ -119,16 +119,11 @@ describe('UrlBar Final Coverage', () => {
         const wrapper = mount(UrlBar);
         const vm = wrapper.vm as any;
         
-        // Setup ref
-        const btn = document.createElement('button');
-        btn.innerText = 'Exportar';
-        vm.exportButtonRef = btn;
-
         await vm.handleExportAction({ label: 'cURL', action: 'curl' });
-        expect(btn.innerText).toBe('¡Copiado!');
+        expect(vm.exportButtonText).toBe('¡Copiado!');
         
         vi.runAllTimers();
-        expect(btn.innerText).toBe('Exportar');
+        expect(vm.exportButtonText).toBe('Exportar');
         vi.useRealTimers();
     });
 });
