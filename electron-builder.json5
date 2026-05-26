@@ -7,40 +7,52 @@
   "directories": {
     "output": "release"
   },
-  "publish": {
-    "provider": "github",
-    "owner": "jaalorsa517",
-    "repo": "j5-request"
-  },
   "files": [
     "dist",
     "dist-electron"
   ],
   "mac": {
     "target": [
+      "dmg",
       "zip"
-    ],
-    "icon": "build/icon.png",
-    "artifactName": "${productName}-Mac-${version}-Portable.${ext}"
+    ]
+  },
+  "dmg": {
+    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
   "win": {
-    "icon": "build/icon.png",
     "target": [
-      "portable"
-    ],
-    "artifactName": "${productName}-Windows-${version}-Portable.${ext}"
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      }
+    ]
   },
   "nsis": {
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+  },
+  "portable": {
+    "artifactName": "${productName}-Windows-${version}-Portable.${ext}"
   },
   "linux": {
     "target": [
-      "AppImage"
-    ],
-    "maintainer": "jaalorsa517 <jaalorsa517@users.noreply.github.com>",
-    "artifactName": "${productName}-Linux-${version}-Portable.${ext}"
+      "AppImage",
+      "tar.gz"
+    ]
+  },
+  "appImage": {
+    "artifactName": "${productName}-Linux-${version}.${ext}"
   }
 }
