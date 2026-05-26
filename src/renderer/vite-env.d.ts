@@ -45,6 +45,11 @@ declare global {
                 findRepos: (workspacePath: string) => Promise<string[]>;
                 getFileContent: (repoPath: string, filePath: string, ref: string) => Promise<string>;
             };
+            app: {
+                getInfo: () => Promise<any>;
+                openExternal: (url: string) => Promise<void>;
+                onUpdaterStatus: (callback: (status: string, data?: any) => void) => () => void;
+            };
             request: {
                 execute: (request: Partial<J5Request>, environment: Record<string, string>, projectRoot?: string) => Promise<any>;
             };
