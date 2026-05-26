@@ -2,6 +2,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.jaalorsa.j5request",
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "jaalorsa517",
+      "repo": "j5-request"
+    }
+  ],
   "asar": true,
   "productName": "jaalorsa-j5-request",
   "directories": {
