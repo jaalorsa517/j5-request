@@ -13,8 +13,11 @@
   ],
   "mac": {
     "target": [
-      "dmg"
-    ],
+      "dmg",
+      "zip"
+    ]
+  },
+  "dmg": {
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
   "win": {
@@ -24,20 +27,32 @@
         "arch": [
           "x64"
         ]
+      },
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
       }
-    ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    ]
   },
   "nsis": {
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+  },
+  "portable": {
+    "artifactName": "${productName}-Windows-${version}-Portable.${ext}"
   },
   "linux": {
     "target": [
-      "AppImage"
-    ],
+      "AppImage",
+      "tar.gz"
+    ]
+  },
+  "appImage": {
     "artifactName": "${productName}-Linux-${version}.${ext}"
   }
 }
